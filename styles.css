@@ -202,6 +202,32 @@ html, body {
 .mapbox{ width:100%; height:230px; border-radius:16px; overflow:hidden; border:1px solid var(--line); background:#eee; }
 .mapbox iframe{ width:100%; height:100%; border:0; display:block; }
 
+/* アバター */
+.avatar{ border-radius:50%; background-size:cover; background-position:center; flex:none; display:flex; align-items:center; justify-content:center; }
+.avatar.ph{ background:#f3e4d2; color:#8a5a22; font-weight:800; }
+
+/* 7タブ用にさらに詰める */
+.tabbar .tab{ font-size:9.5px; padding:7px 0; }
+.tabbar .tab .tab-ico{ font-size:18px; }
+.tabbar .tab .tab-label{ white-space:nowrap; }
+
+/* なかま：チャット */
+.chat-screen{ display:flex; flex-direction:column; height:100%; }
+.chat-top{ display:flex; align-items:center; gap:10px; }
+.chat-back{ border:none; background:#f3ece0; width:34px; height:34px; border-radius:10px; font-size:20px; cursor:pointer; flex:none; }
+.chat-body{ flex:1; overflow-y:auto; padding:16px 14px; display:flex; flex-direction:column; gap:10px; background:#f6efe2; }
+.msg{ display:flex; gap:8px; align-items:flex-end; max-width:86%; }
+.msg.me{ align-self:flex-end; flex-direction:row; justify-content:flex-end; }
+.msg .bubble{ background:#fff; border:1px solid var(--line); padding:9px 13px; border-radius:16px; border-bottom-left-radius:5px; }
+.msg.me .bubble{ background:var(--teal); color:#fff; border:none; border-radius:16px; border-bottom-right-radius:5px; }
+.msg .who{ font-size:11px; font-weight:800; color:var(--magenta); margin-bottom:3px; }
+.msg .txt{ font-size:15px; line-height:1.45; word-break:break-word; }
+.loc-chip{ display:inline-block; margin-top:7px; font-size:12px; font-weight:700; background:rgba(255,255,255,.25); color:inherit; padding:5px 10px; border-radius:999px; text-decoration:none; border:1px solid rgba(255,255,255,.5); }
+.msg:not(.me) .loc-chip{ background:#f3e4d2; color:#8a5a22; border-color:transparent; }
+.chat-bar{ display:flex; gap:8px; align-items:center; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); background:#fff; }
+.chat-bar input{ flex:1; padding:11px 14px; border:1.5px solid var(--line); border-radius:999px; font-size:15px; }
+.chat-bar input:focus{ outline:none; border-color:var(--teal); }
+
 /* 5プラットフォーム投稿 */
 .plat-grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
 .plat{ border:none; cursor:pointer; color:#fff; border-radius:14px; padding:12px 4px; display:flex; flex-direction:column; align-items:center; gap:5px; font-size:10px; font-weight:700; }

@@ -12,7 +12,7 @@ const DB = {
   get(k, def){ try{ return JSON.parse(localStorage.getItem(k)) ?? def; }catch{ return def; } },
   set(k, v){ localStorage.setItem(k, JSON.stringify(v)); },
 };
-const K = { users:"ma_users", session:"ma_session", resv:"ma_reservations", album:"ma_album", stamps:"ma_stamps", lang:"ma_lang" };
+const K = { users:"ma_users", session:"ma_session", resv:"ma_reservations", album:"ma_album", stamps:"ma_stamps", lang:"ma_lang", chat:"ma_chat", groups:"ma_groups" };
 
 /* ---------- 認証 ---------- */
 async function sha256(s){ const b=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
@@ -31,7 +31,19 @@ const State = {
   lang: localStorage.getItem(K.lang) || "ja",
   speakingId:null,
   geo:null, // 現在地 {lat,lng}
+  chatGroup:null, // 開いているグループid
 };
+
+/* ---------- プロフィール ---------- */
+function userRec(){ return DB.get(K.users,{})[State.user.email] || State.user; }
+function saveProfile(nick, avatar, bio){ const u=DB.get(K.users,{}); const r=u[State.user.email]; if(!r) return; if(nick) r.name=nick.trim(); if(avatar!==undefined) r.avatar=avatar; r.bio=(bio||"").trim(); DB.set(K.users,u); State.user=r; }
+function avatarHTML(rec, size){
+  size=size||44;
+  if(rec && rec.avatar) return `<div class="avatar" style="width:${size}px;height:${size}px;background-image:url('${rec.avatar}')"></div>`;
+  if(rec && rec.emoji) return `<div class="avatar ph" style="width:${size}px;height:${size}px;font-size:${Math.round(size*0.5)}px">${rec.emoji}</div>`;
+  const ch=((rec && (rec.name||rec.from)) || "?").trim()[0] || "?";
+  return `<div class="avatar ph" style="width:${size}px;height:${size}px;font-size:${Math.round(size*0.42)}px">${esc(ch.toUpperCase())}</div>`;
+}
 
 /* ---------- i18n ---------- */
 const LANGS = [["ja","日本語"],["en","English"],["es","Español"]];
@@ -77,6 +89,11 @@ const I18N = {
     mypage_sub:"", reservations:"Tus reservas", no_resv:"Aún no hay reservas. Reserva desde Explorar.", confirmed:"Confirmada", logout:"Salir", language:"Idioma / Language", proto_ver:"Mi Amigo prototipo — Antigua, Guatemala 🌋",
     err_exists:"Este correo ya está registrado", err_nouser:"Cuenta no encontrada", err_pass:"Contraseña incorrecta", err_email:"Formato de correo inválido", err_pwlen:"La contraseña debe tener 6+ caracteres", err_name:"Ingresa tu nombre" },
 };
+// 追加i18n（なかま/チャット/プロフィール/位置共有）
+Object.assign(I18N.ja,{ tab_community:"なかま", community_sub:"ツアーで出会った仲間とつながろう（ワールドホステル風）", groups:"グループ", create_group:"＋ グループを作成", new_group_ph:"グループ名を入力", group_created:"グループを作成しました", open_chat:"開く", msg_ph:"メッセージを入力…", send:"送信", you:"あなた", share_here:"📍 今ここにいるよ", here_now:"📍 今ここにいるよ！", here_shared:"現在地を共有しました", loc_link:"地図で見る", demo_chat_note:"プロトタイプ：メッセージはこの端末内のデモです。仲間とリアルタイム共有するにはサーバー連携が必要です。", profile:"プロフィール", edit_profile:"編集", amigo_name:"アミーゴネーム / ニックネーム", profile_photo:"プロフィール写真", add_photo:"📷 写真を選ぶ", bio:"ひとこと", bio_ph:"例: コーヒーと火山が好きな旅人", save:"保存", profile_saved:"プロフィールを保存しました" });
+Object.assign(I18N.en,{ tab_community:"Amigos", community_sub:"Connect with fellow travelers from the tour (world-hostel vibe)", groups:"Groups", create_group:"＋ Create group", new_group_ph:"Enter group name", group_created:"Group created", open_chat:"Open", msg_ph:"Type a message…", send:"Send", you:"You", share_here:"📍 I'm here now", here_now:"📍 I'm here now!", here_shared:"Location shared", loc_link:"View on map", demo_chat_note:"Prototype: messages are a demo on this device. Real-time sharing needs a backend.", profile:"Profile", edit_profile:"Edit", amigo_name:"Amigo name / Nickname", profile_photo:"Profile photo", add_photo:"📷 Choose photo", bio:"About you", bio_ph:"e.g. A traveler who loves coffee and volcanoes", save:"Save", profile_saved:"Profile saved" });
+Object.assign(I18N.es,{ tab_community:"Amigos", community_sub:"Conecta con viajeros del tour (estilo world-hostel)", groups:"Grupos", create_group:"＋ Crear grupo", new_group_ph:"Nombre del grupo", group_created:"Grupo creado", open_chat:"Abrir", msg_ph:"Escribe un mensaje…", send:"Enviar", you:"Tú", share_here:"📍 Estoy aquí", here_now:"📍 ¡Estoy aquí ahora!", here_shared:"Ubicación compartida", loc_link:"Ver en el mapa", demo_chat_note:"Prototipo: los mensajes son una demo en este dispositivo. Compartir en tiempo real requiere un servidor.", profile:"Perfil", edit_profile:"Editar", amigo_name:"Nombre Amigo / Apodo", profile_photo:"Foto de perfil", add_photo:"📷 Elegir foto", bio:"Sobre ti", bio_ph:"ej. Viajero que ama el café y los volcanes", save:"Guardar", profile_saved:"Perfil guardado" });
+
 function t(key){ const L=State.lang; return (I18N[L] && I18N[L][key]) || I18N.ja[key] || key; }
 function L(obj){ if(obj==null) return ""; if(typeof obj==="string") return obj; return obj[State.lang] || obj.ja || ""; }
 function setLang(code){ State.lang=code; localStorage.setItem(K.lang, code); }
@@ -116,7 +133,7 @@ function render(){
   tabbar.classList.remove("hidden");
   tabbar.querySelectorAll(".tab").forEach(tb=>tb.classList.toggle("active", tb.dataset.view===State.view));
   screen.innerHTML="";
-  const v={ discover:viewDiscover, quest:viewQuest, guide:viewGuide, map:viewMap, album:viewAlbum, mypage:viewMyPage }[State.view]();
+  const v={ discover:viewDiscover, quest:viewQuest, guide:viewGuide, map:viewMap, community:viewCommunity, album:viewAlbum, mypage:viewMyPage }[State.view]();
   screen.appendChild(v); screen.scrollTop=0;
 }
 
@@ -380,6 +397,94 @@ function viewMap(){
   return wrap;
 }
 
+/* ---------- なかま（グループチャット・位置共有） ---------- */
+function allGroups(){ return [...DATA.community.groups, ...DB.get(K.groups,[])]; }
+function groupMsgs(gid){
+  const g=allGroups().find(x=>x.id===gid);
+  const seed=(g&&g.seed||[]).map((m,i)=>({...m, id:"seed"+gid+i, ts:0, seed:true}));
+  const mine=DB.get(K.chat,{})[gid]||[];
+  return [...seed, ...mine];
+}
+function addMsg(gid,msg){ const all=DB.get(K.chat,{}); all[gid]=[...(all[gid]||[]), msg]; DB.set(K.chat,all); }
+
+function viewCommunity(){
+  if(State.chatGroup) return viewChat(State.chatGroup);
+  const wrap=el(`<div><div class="topbar"><h1>${t("tab_community")}</h1><p class="sub">${t("community_sub")}</p></div>
+    <div class="pad">
+      <div class="row" style="gap:8px;margin-bottom:14px">
+        <input id="ngName" placeholder="${t("new_group_ph")}" style="flex:1;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;font-size:15px" />
+        <button class="btn sm" id="ngBtn" style="white-space:nowrap">${t("create_group")}</button>
+      </div>
+      <div class="section-title" style="margin-top:6px">${t("groups")}</div>
+      <div id="glist"></div>
+      <p class="hint" style="margin-top:16px">${t("demo_chat_note")}</p>
+    </div></div>`);
+  const list=$("#glist",wrap);
+  allGroups().forEach(g=>{
+    const msgs=groupMsgs(g.id); const last=msgs[msgs.length-1];
+    const item=el(`<div class="list-item"><div class="ava">${g.emoji}</div>
+      <div style="flex:1"><strong>${esc(L(g.name))}</strong>
+        <div class="muted" style="font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${last?esc((last.me?t("you")+": ":(last.from?esc(last.from)+": ":""))+(last.text||"")):""}</div></div>
+      <button class="btn sm secondary" data-id="${g.id}">${t("open_chat")}</button></div>`);
+    $("button",item).onclick=()=>{ State.chatGroup=g.id; render(); };
+    list.appendChild(item);
+  });
+  $("#ngBtn",wrap).onclick=()=>{ const v=$("#ngName",wrap).value.trim(); if(!v) return; const ug=DB.get(K.groups,[]); const id="ug"+Date.now(); ug.push({id,emoji:"🌟",name:v,seed:[]}); DB.set(K.groups,ug); toast(t("group_created")); State.chatGroup=id; render(); };
+  return wrap;
+}
+
+function viewChat(gid){
+  const g=allGroups().find(x=>x.id===gid);
+  const wrap=el(`<div class="chat-screen">
+    <div class="topbar chat-top"><button class="chat-back" id="cBack">‹</button><div class="ava" style="width:34px;height:34px;font-size:18px">${g?g.emoji:"💬"}</div><div style="flex:1"><h1 style="font-size:18px;margin:0">${esc(L(g?g.name:""))}</h1></div></div>
+    <div class="chat-body" id="cbody"></div>
+    <div class="chat-bar">
+      <button class="btn gold sm" id="here" style="width:auto;white-space:nowrap">${t("share_here")}</button>
+      <input id="cmsg" placeholder="${t("msg_ph")}" />
+      <button class="btn sm" id="csend" style="width:auto">${t("send")}</button>
+    </div>
+  </div>`);
+  const body=$("#cbody",wrap);
+  function paint(){
+    body.innerHTML="";
+    groupMsgs(gid).forEach(m=>{
+      const me=!!m.me;
+      const who = me ? userRec() : {name:m.from, emoji:m.emoji};
+      const locHtml = m.loc ? `<a href="${gmapsView(m.loc.lat,m.loc.lng)}" target="_blank" rel="noopener" class="loc-chip">🗺️ ${t("loc_link")}</a>` : "";
+      const bubble=el(`<div class="msg ${me?"me":""}">
+        ${me?"":avatarHTML(who,34)}
+        <div class="bubble">${me?"":`<div class="who">${esc(m.from||"")}</div>`}<div class="txt">${esc(m.text||"")}</div>${locHtml}</div>
+        ${me?avatarHTML(who,34):""}
+      </div>`);
+      body.appendChild(bubble);
+    });
+    body.scrollTop=body.scrollHeight;
+  }
+  paint();
+  $("#cBack",wrap).onclick=()=>{ State.chatGroup=null; render(); };
+  const send=()=>{ const inp=$("#cmsg",wrap); const v=inp.value.trim(); if(!v) return; addMsg(gid,{id:"m"+Date.now(),me:true,text:v,ts:Date.now()}); inp.value=""; paint(); };
+  $("#csend",wrap).onclick=send;
+  $("#cmsg",wrap).addEventListener("keydown",e=>{ if(e.key==="Enter") send(); });
+  $("#here",wrap).onclick=()=>{ if(!navigator.geolocation){ toast(t("loc_fail")); return; } const b=$("#here",wrap); b.textContent=t("locating");
+    navigator.geolocation.getCurrentPosition(p=>{ const loc={lat:p.coords.latitude,lng:p.coords.longitude}; State.geo=loc; addMsg(gid,{id:"m"+Date.now(),me:true,text:t("here_now"),loc,ts:Date.now()}); toast(t("here_shared")); paint(); b.textContent=t("share_here"); },
+      ()=>{ toast(t("loc_fail")); b.textContent=t("share_here"); }, {enableHighAccuracy:true,timeout:8000}); };
+  setTimeout(()=>{ body.scrollTop=body.scrollHeight; },50);
+  return wrap;
+}
+
+function openProfile(){
+  const r=userRec(); let avatar=r.avatar||"";
+  const back=openSheet(`<h2>${t("edit_profile")}</h2>
+    <div style="display:flex;justify-content:center;margin:6px 0 14px"><div id="pAva">${avatarHTML(r,84)}</div></div>
+    <label class="btn secondary" for="avaInput">${t("add_photo")}</label>
+    <input id="avaInput" type="file" accept="image/*" style="display:none" />
+    <div class="field" style="margin-top:14px"><label>${t("amigo_name")}</label><input id="pNick" value="${esc(r.name||"")}" /></div>
+    <div class="field"><label>${t("bio")}</label><input id="pBio" value="${esc(r.bio||"")}" placeholder="${t("bio_ph")}" /></div>
+    <button class="btn" id="pSave">${t("save")}</button>`);
+  $("#avaInput",back).onchange=async e=>{ const f=e.target.files[0]; if(!f) return; try{ avatar=await fileToResizedDataUrl(f,400,0.8); $("#pAva",back).innerHTML=avatarHTML({avatar},84); }catch{ toast(t("ck_fail")); } };
+  $("#pSave",back).onclick=()=>{ saveProfile($("#pNick",back).value, avatar, $("#pBio",back).value); closeSheet(); toast(t("profile_saved")); render(); };
+}
+
 /* ---------- アルバム＋5プラットフォーム共有 ---------- */
 function viewAlbum(){
   const photos=DB.get(K.album,[]).filter(p=>p.userEmail===State.user.email);
@@ -436,10 +541,19 @@ function viewMyPage(){
   const resv=DB.get(K.resv,[]).filter(r=>r.userEmail===State.user.email).sort((a,b)=>b.createdAt-a.createdAt);
   const wrap=el(`<div><div class="topbar"><h1>${t("tab_mypage")}</h1><p class="sub">${esc(State.user.name)}（${esc(State.user.email)}）</p></div>
     <div class="pad">
+      <div class="card" style="margin-bottom:6px"><div class="card-body">
+        <div class="row" style="align-items:center">
+          ${avatarHTML(userRec(),60)}
+          <div style="flex:1;margin-left:4px"><strong style="font-size:18px">${esc(userRec().name||"")}</strong>
+            <div class="muted" style="font-size:13px;margin-top:2px">${esc(userRec().bio||"")}</div></div>
+          <button class="btn sm secondary" id="editProfile">${t("edit_profile")}</button>
+        </div>
+      </div></div>
       <div class="section-title">${t("language")}</div><div id="myLang"></div>
       <div class="section-title">${t("reservations")}</div><div id="rl"></div>
       <button class="btn secondary" id="logout" style="margin-top:24px">${t("logout")}</button>
       <p class="hint" style="text-align:center;margin-top:18px">${t("proto_ver")}</p></div></div>`);
+  $("#editProfile",wrap).onclick=openProfile;
   $("#myLang",wrap).appendChild(langSeg(()=>render()));
   const list=$("#rl",wrap);
   if(!resv.length){ list.appendChild(el(`<p class="muted" style="padding:8px 2px">${t("no_resv")}</p>`)); }
@@ -449,6 +563,6 @@ function viewMyPage(){
 }
 
 /* ---------- 起動 ---------- */
-document.querySelectorAll("#tabbar .tab").forEach(tb=>{ tb.onclick=()=>{ stopSpeak(); State.view=tb.dataset.view; render(); }; });
+document.querySelectorAll("#tabbar .tab").forEach(tb=>{ tb.onclick=()=>{ stopSpeak(); State.chatGroup=null; State.view=tb.dataset.view; render(); }; });
 State.user=Auth.current();
 render();

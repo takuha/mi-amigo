@@ -153,4 +153,26 @@ window.MI_AMIGO_DATA = {
                es:"Esta ciudad fue la capital, 'Santiago de los Caballeros'. Los terremotos de 1773 la devastaron, la capital se trasladó y lo que quedó se llamó 'La Antigua'." } },
     ],
   },
+
+  // なかま（コミュニティ）— デモのグループとメッセージ（ワールドホステル風）
+  community: {
+    groups: [
+      { id:"g-tour", emoji:"🏛️", name:{ ja:"アンティグア世界遺産ツアー", en:"Antigua Heritage Tour", es:"Tour Patrimonio de Antigua" },
+        seed:[
+          { from:"Lucía", emoji:"🦜", text:"¡Hola amigos! ¿Alguien sube al Cerro de la Cruz al atardecer? 🌋" },
+          { from:"Ken", emoji:"🎒", text:"行きたい！何時集合？" },
+          { from:"Mia", emoji:"📷", text:"Just got the yellow arch shot, it's glowing today ✨" },
+        ] },
+      { id:"g-cafe", emoji:"☕", name:{ ja:"カフェ好き Amigos", en:"Café Amigos", es:"Amigos del café" },
+        seed:[
+          { from:"Sofía", emoji:"☕", text:"Fat Cat tiene el mejor cortado 👌" },
+          { from:"Tomo", emoji:"🍰", text:"12 Onzas のケーキ最高だった！" },
+        ] },
+      { id:"g-lounge", emoji:"🌏", name:{ ja:"旅人ラウンジ", en:"Traveler Lounge", es:"Sala de viajeros" },
+        seed:[
+          { from:"Diego", emoji:"🎸", text:"Live music at the hostel tonight, todos invitados!" },
+          { from:"Anna", emoji:"🌻", text:"Anyone heading to Lake Atitlán this weekend?" },
+        ] },
+    ],
+  },
 };
