@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Mi Amigo — Antigua</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#c8543b" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Mi Amigo" />
+  <link rel="apple-touch-icon" href="img/icon-180.png" />
+</head>
+<body>
+  <div class="phone">
+    <!-- 動的に各画面を描画 -->
+    <main id="screen" class="screen"></main>
+    <!-- 下部タブ -->
+    <nav id="tabbar" class="tabbar hidden">
+      <button class="tab" data-view="discover"><span class="tab-ico">🗓️</span><span>探す</span></button>
+      <button class="tab" data-view="quest"><span class="tab-ico">🧭</span><span>謎解き</span></button>
+      <button class="tab" data-view="guide"><span class="tab-ico">🎧</span><span>ガイド</span></button>
+      <button class="tab" data-view="album"><span class="tab-ico">📸</span><span>アルバム</span></button>
+      <button class="tab" data-view="mypage"><span class="tab-ico">👤</span><span>マイ</span></button>
+    </nav>
+  </div>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+  <script>
+    // PWA: Service Worker 登録（オフライン＆ホーム画面追加）
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+    }
+  </script>
+</body>
+</html>

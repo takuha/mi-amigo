@@ -1,0 +1,17 @@
+{
+  "name": "Mi Amigo — Antigua",
+  "short_name": "Mi Amigo",
+  "description": "アンティグアを歩いて、体験して、つながる街おこしアプリ",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fbf4e8",
+  "theme_color": "#c8543b",
+  "lang": "ja",
+  "icons": [
+    { "src": "img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
