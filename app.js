@@ -111,6 +111,12 @@ Object.assign(I18N.en,{ age:"Age", gender:"Gender", g_m:"Male", g_f:"Female", g_
 Object.assign(I18N.es,{ age:"Edad", gender:"Género", g_m:"Hombre", g_f:"Mujer", g_o:"Otro", g_na:"Prefiero no decir", from_country:"De", proud:"Países que amas (varios)", proud_hint:"Agrega los países que amas o de los que estás orgulloso", add_country:"＋ Agregar", select_ph:"Elegir…", optional:"(opcional)",
   amigo_card:"Tarjeta Amigo", make_card:"🎫 Crear mi Tarjeta Amigo", save_card:"📥 Guardar imagen", share_card:"📲 Compartir", card_from:"De", card_loves:"Ama", card_stamps:"Sellos", card_made:"Tarjeta guardada", card_tagline:"Caminando Antigua" });
 
+// 追加i18n（電話番号認証）
+Object.assign(I18N.ja,{ phone:"電話番号", phone_ph:"電話番号（ハイフン無し）", send_code:"認証コードを送信", code:"認証コード", code_ph:"6桁のコード", verify:"確認して続ける", nick_new:"お名前 / ニックネーム（新規の方）", demo_code:"デモ用コード", sms_note:"デモ版：実際のSMS送信には本番でサーバー連携(Firebase/Twilio等)が必要です。コードは画面に表示します。", code_sent:"認証コードを送信しました", err_phone:"電話番号を入力してください", err_code:"コードが正しくありません" });
+Object.assign(I18N.en,{ phone:"Phone number", phone_ph:"Phone (no dashes)", send_code:"Send code", code:"Verification code", code_ph:"6-digit code", verify:"Verify & continue", nick_new:"Name / Nickname (new users)", demo_code:"Demo code", sms_note:"Demo: real SMS needs a backend (Firebase/Twilio). The code is shown on screen.", code_sent:"Code sent", err_phone:"Enter your phone number", err_code:"Incorrect code" });
+Object.assign(I18N.es,{ phone:"Número de teléfono", phone_ph:"Teléfono (sin guiones)", send_code:"Enviar código", code:"Código de verificación", code_ph:"Código de 6 dígitos", verify:"Verificar y continuar", nick_new:"Nombre / Apodo (nuevos)", demo_code:"Código demo", sms_note:"Demo: el SMS real necesita un backend (Firebase/Twilio). El código se muestra en pantalla.", code_sent:"Código enviado", err_phone:"Ingresa tu número", err_code:"Código incorrecto" });
+const DIAL={ JP:"+81",GT:"+502",US:"+1",CA:"+1",MX:"+52",ES:"+34",FR:"+33",DE:"+49",GB:"+44",IT:"+39",NL:"+31",CH:"+41",PT:"+351",IE:"+353",SE:"+46",NO:"+47",AU:"+61",NZ:"+64",BR:"+55",AR:"+54",CL:"+56",CO:"+57",PE:"+51",CR:"+506",SV:"+503",HN:"+504",NI:"+505",BZ:"+501",KR:"+82",CN:"+86",TW:"+886",TH:"+66",IN:"+91",IL:"+972",ZA:"+27",PL:"+48" };
+
 function t(key){ const L=State.lang; return (I18N[L] && I18N[L][key]) || I18N.ja[key] || key; }
 function country(code){ return (DATA.countries||[]).find(c=>c.c===code); }
 function countryName(code){ const c=country(code); return c?(c[State.lang]||c.en):""; }
@@ -164,41 +170,50 @@ function langSeg(onPick){
   return seg;
 }
 
-/* ---------- 認証（言語選択を最初に） ---------- */
+/* ---------- 認証（電話番号＋認証コード／言語選択を最初に） ---------- */
+function normPhone(dial,num){ return (dial+num).replace(/[^0-9+]/g,""); }
 function viewAuth(){
-  let mode="register";
+  let sentCode=null, pendingKey=null, pendingDisplay=null, pendingNick="";
+  const dialOpts=DATA.countries.map(c=>`<option value="${DIAL[c.c]||""}" ${c.c==="JP"?"selected":""}>${c.f} ${DIAL[c.c]||""}</option>`).join("");
   const wrap=el(`<div>
-    <div class="auth-hero"><div class="volcano">🌋🌋🌋</div><h1>Mi Amigo</h1><p id="aTag">${t("tagline")}</p></div>
+    <div class="auth-hero"><div class="volcano">🌋🌋🌋</div><h1>Mi Amigo</h1><p>${t("tagline")}</p></div>
     <div class="weave"></div>
     <div class="pad">
       <label class="field-label">${t("choose_lang")}</label>
       <div id="authLang"></div>
-      <div class="auth-tabs" style="margin-top:18px;">
-        <button data-m="register" class="active">${t("register")}</button>
-        <button data-m="login">${t("login")}</button>
-      </div>
-      <form id="authForm">
-        <div class="field" id="nameField"><label>${t("name")}</label><input name="name" autocomplete="name" placeholder="Taku" /></div>
-        <div class="field"><label>${t("email")}</label><input name="email" type="email" autocomplete="email" placeholder="you@example.com" /></div>
-        <div class="field"><label>${t("password")}</label><input name="password" type="password" autocomplete="new-password" placeholder="${t("pw_ph")}" /></div>
-        <p class="error" id="authError"></p>
-        <button class="btn" type="submit" id="authSubmit">${t("create")}</button>
-        <p class="hint" style="text-align:center;margin-top:14px">${t("proto_note")}</p>
-      </form>
-    </div>
-  </div>`);
-  $("#authLang",wrap).appendChild(langSeg(()=>render())); // 言語変更で画面再描画
-  const setMode=(m)=>{ mode=m; wrap.querySelectorAll(".auth-tabs button").forEach(b=>b.classList.toggle("active",b.dataset.m===m)); $("#nameField",wrap).style.display=m==="register"?"":"none"; $("#authSubmit",wrap).textContent=m==="register"?t("create"):t("login_btn"); $("#authError",wrap).textContent=""; };
-  wrap.querySelectorAll(".auth-tabs button").forEach(b=>b.onclick=()=>setMode(b.dataset.m));
-  $("#authForm",wrap).addEventListener("submit",async e=>{
-    e.preventDefault(); const f=e.target, err=$("#authError",wrap); err.textContent="";
-    const name=f.name.value,email=f.email.value,pw=f.password.value;
-    if(!email.includes("@")) return err.textContent=t("err_email");
-    if(pw.length<6) return err.textContent=t("err_pwlen");
-    if(mode==="register"&&!name.trim()) return err.textContent=t("err_name");
-    try{ const u=mode==="register"?await Auth.register(name,email,pw):await Auth.login(email,pw); State.user=u; State.view="discover"; toast(`${t("welcome")}, ${u.name}!`); render(); }
-    catch(ex){ err.textContent=ex.message; }
-  });
+      <div id="authBody" style="margin-top:18px"></div>
+    </div></div>`);
+  $("#authLang",wrap).appendChild(langSeg(()=>render()));
+  const body=$("#authBody",wrap);
+  function renderPhone(){
+    body.innerHTML=`
+      <div class="field"><label>${t("phone")}</label>
+        <div class="row" style="gap:8px"><select id="dial" style="width:135px">${dialOpts}</select><input id="phone" type="tel" inputmode="tel" style="flex:1" placeholder="${t("phone_ph")}" /></div></div>
+      <div class="field"><label>${t("nick_new")}</label><input id="nick" placeholder="Taku" /></div>
+      <p class="error" id="aErr"></p>
+      <button class="btn" id="sendBtn">${t("send_code")}</button>
+      <p class="hint" style="margin-top:12px">${t("sms_note")}</p>`;
+    $("#sendBtn",body).onclick=()=>{ const num=$("#phone",body).value.trim(); if(!num){ $("#aErr",body).textContent=t("err_phone"); return; }
+      const dial=$("#dial",body).value; pendingDisplay=dial+" "+num; pendingKey=normPhone(dial,num); pendingNick=$("#nick",body).value;
+      sentCode=String(Math.floor(100000+Math.random()*900000)); toast(t("code_sent")); renderCode(); };
+  }
+  function renderCode(){
+    body.innerHTML=`
+      <div class="card" style="background:#f3ece0;border:none;margin-bottom:14px"><div class="card-body">
+        <div class="muted" style="font-size:13px">📱 ${esc(pendingDisplay)}</div>
+        <div style="margin-top:6px;font-size:14px">${t("demo_code")}: <b style="font-size:22px;letter-spacing:4px;color:var(--terra)">${sentCode}</b></div></div></div>
+      <div class="field"><label>${t("code")}</label><input id="code" inputmode="numeric" maxlength="6" placeholder="${t("code_ph")}" /></div>
+      <p class="error" id="aErr"></p>
+      <button class="btn" id="verifyBtn">${t("verify")}</button>
+      <button class="btn ghost" id="backBtn" style="margin-top:8px">${t("back")}</button>`;
+    $("#code",body).value=sentCode; // デモ：自動入力
+    $("#verifyBtn",body).onclick=()=>{ if($("#code",body).value.trim()!==sentCode){ $("#aErr",body).textContent=t("err_code"); return; }
+      const all=DB.get(K.users,{}); let u=all[pendingKey];
+      if(!u){ u={ id:pendingKey, email:pendingKey, phone:pendingDisplay, name:(pendingNick.trim()||pendingDisplay) }; all[pendingKey]=u; DB.set(K.users,all); }
+      DB.set(K.session,pendingKey); State.user=u; State.view="discover"; toast(`${t("welcome")}, ${u.name}!`); render(); };
+    $("#backBtn",body).onclick=renderPhone;
+  }
+  renderPhone();
   return wrap;
 }
 
@@ -610,7 +625,7 @@ function openPhoto(p){
 /* ---------- マイページ（言語変更＋予約一覧） ---------- */
 function viewMyPage(){
   const resv=DB.get(K.resv,[]).filter(r=>r.userEmail===State.user.email).sort((a,b)=>b.createdAt-a.createdAt);
-  const wrap=el(`<div><div class="topbar"><h1>${t("tab_mypage")}</h1><p class="sub">${esc(State.user.name)}（${esc(State.user.email)}）</p></div>
+  const wrap=el(`<div><div class="topbar"><h1>${t("tab_mypage")}</h1><p class="sub">${esc(userRec().name)}　📱 ${esc(userRec().phone||userRec().email)}</p></div>
     <div class="pad">
       <div class="card" style="margin-bottom:6px"><div class="card-body">
         <div class="row" style="align-items:center">
