@@ -36,7 +36,16 @@ const State = {
 
 /* ---------- プロフィール ---------- */
 function userRec(){ return DB.get(K.users,{})[State.user.email] || State.user; }
-function saveProfile(nick, avatar, bio){ const u=DB.get(K.users,{}); const r=u[State.user.email]; if(!r) return; if(nick) r.name=nick.trim(); if(avatar!==undefined) r.avatar=avatar; r.bio=(bio||"").trim(); DB.set(K.users,u); State.user=r; }
+function saveProfile(p){ const u=DB.get(K.users,{}); const r=u[State.user.email]; if(!r) return;
+  if(p.nick) r.name=p.nick.trim();
+  if(p.avatar!==undefined) r.avatar=p.avatar;
+  if(p.bio!==undefined) r.bio=(p.bio||"").trim();
+  if(p.age!==undefined) r.age=p.age;
+  if(p.gender!==undefined) r.gender=p.gender;
+  if(p.country!==undefined) r.country=p.country;
+  if(p.prouds!==undefined) r.prouds=p.prouds;
+  DB.set(K.users,u); State.user=r; }
+function profileMeta(r){ const b=[]; if(r.country) b.push(countryFlag(r.country)+" "+countryName(r.country)); if(r.age) b.push(r.age); if(r.gender) b.push(t("g_"+r.gender)); let s=b.join(" · "); if(r.prouds&&r.prouds.length) s+=(s?"　":"")+"❤️ "+r.prouds.map(countryFlag).join(""); return s; }
 function avatarHTML(rec, size){
   size=size||44;
   if(rec && rec.avatar) return `<div class="avatar" style="width:${size}px;height:${size}px;background-image:url('${rec.avatar}')"></div>`;
@@ -94,7 +103,18 @@ Object.assign(I18N.ja,{ tab_community:"なかま", community_sub:"ツアーで�
 Object.assign(I18N.en,{ tab_community:"Amigos", community_sub:"Connect with fellow travelers from the tour (world-hostel vibe)", groups:"Groups", create_group:"＋ Create group", new_group_ph:"Enter group name", group_created:"Group created", open_chat:"Open", msg_ph:"Type a message…", send:"Send", you:"You", share_here:"📍 I'm here now", here_now:"📍 I'm here now!", here_shared:"Location shared", loc_link:"View on map", demo_chat_note:"Prototype: messages are a demo on this device. Real-time sharing needs a backend.", profile:"Profile", edit_profile:"Edit", amigo_name:"Amigo name / Nickname", profile_photo:"Profile photo", add_photo:"📷 Choose photo", bio:"About you", bio_ph:"e.g. A traveler who loves coffee and volcanoes", save:"Save", profile_saved:"Profile saved" });
 Object.assign(I18N.es,{ tab_community:"Amigos", community_sub:"Conecta con viajeros del tour (estilo world-hostel)", groups:"Grupos", create_group:"＋ Crear grupo", new_group_ph:"Nombre del grupo", group_created:"Grupo creado", open_chat:"Abrir", msg_ph:"Escribe un mensaje…", send:"Enviar", you:"Tú", share_here:"📍 Estoy aquí", here_now:"📍 ¡Estoy aquí ahora!", here_shared:"Ubicación compartida", loc_link:"Ver en el mapa", demo_chat_note:"Prototipo: los mensajes son una demo en este dispositivo. Compartir en tiempo real requiere un servidor.", profile:"Perfil", edit_profile:"Editar", amigo_name:"Nombre Amigo / Apodo", profile_photo:"Foto de perfil", add_photo:"📷 Elegir foto", bio:"Sobre ti", bio_ph:"ej. Viajero que ama el café y los volcanes", save:"Guardar", profile_saved:"Perfil guardado" });
 
+// 追加i18n（プロフィール拡張・アミーゴカード）
+Object.assign(I18N.ja,{ age:"年齢", gender:"性別", g_m:"男性", g_f:"女性", g_o:"その他", g_na:"無回答", from_country:"出身国", proud:"誇りに思う国（複数OK）", proud_hint:"あなたが大好き・誇りに思う国を選んで追加", add_country:"＋ 追加", select_ph:"選択…", optional:"（任意）",
+  amigo_card:"アミーゴカード", make_card:"🎫 アミーゴカードを作る", save_card:"📥 画像を保存", share_card:"📲 シェアして拡散", card_from:"出身", card_loves:"大好きな国", card_stamps:"集めたスタンプ", card_made:"カードを保存しました", card_tagline:"アンティグアを歩こう" });
+Object.assign(I18N.en,{ age:"Age", gender:"Gender", g_m:"Male", g_f:"Female", g_o:"Other", g_na:"Prefer not to say", from_country:"From", proud:"Countries you love (multiple)", proud_hint:"Add the countries you love or are proud of", add_country:"＋ Add", select_ph:"Select…", optional:"(optional)",
+  amigo_card:"Amigo Card", make_card:"🎫 Make my Amigo Card", save_card:"📥 Save image", share_card:"📲 Share it", card_from:"From", card_loves:"Loves", card_stamps:"Stamps", card_made:"Card saved", card_tagline:"Walking Antigua" });
+Object.assign(I18N.es,{ age:"Edad", gender:"Género", g_m:"Hombre", g_f:"Mujer", g_o:"Otro", g_na:"Prefiero no decir", from_country:"De", proud:"Países que amas (varios)", proud_hint:"Agrega los países que amas o de los que estás orgulloso", add_country:"＋ Agregar", select_ph:"Elegir…", optional:"(opcional)",
+  amigo_card:"Tarjeta Amigo", make_card:"🎫 Crear mi Tarjeta Amigo", save_card:"📥 Guardar imagen", share_card:"📲 Compartir", card_from:"De", card_loves:"Ama", card_stamps:"Sellos", card_made:"Tarjeta guardada", card_tagline:"Caminando Antigua" });
+
 function t(key){ const L=State.lang; return (I18N[L] && I18N[L][key]) || I18N.ja[key] || key; }
+function country(code){ return (DATA.countries||[]).find(c=>c.c===code); }
+function countryName(code){ const c=country(code); return c?(c[State.lang]||c.en):""; }
+function countryFlag(code){ const c=country(code); return c?c.f:""; }
 function L(obj){ if(obj==null) return ""; if(typeof obj==="string") return obj; return obj[State.lang] || obj.ja || ""; }
 function setLang(code){ State.lang=code; localStorage.setItem(K.lang, code); }
 
@@ -473,16 +493,67 @@ function viewChat(gid){
 }
 
 function openProfile(){
-  const r=userRec(); let avatar=r.avatar||"";
+  const r=userRec(); let avatar=r.avatar||""; let prouds=[...(r.prouds||[])];
+  const cOpts=(sel)=>`<option value="">${t("select_ph")}</option>`+DATA.countries.map(c=>`<option value="${c.c}" ${sel===c.c?"selected":""}>${c.f} ${esc(c[State.lang]||c.en)}</option>`).join("");
+  const gOpts=`<option value="">${t("select_ph")}</option>`+["m","f","o","na"].map(g=>`<option value="${g}" ${r.gender===g?"selected":""}>${t("g_"+g)}</option>`).join("");
   const back=openSheet(`<h2>${t("edit_profile")}</h2>
     <div style="display:flex;justify-content:center;margin:6px 0 14px"><div id="pAva">${avatarHTML(r,84)}</div></div>
     <label class="btn secondary" for="avaInput">${t("add_photo")}</label>
     <input id="avaInput" type="file" accept="image/*" style="display:none" />
     <div class="field" style="margin-top:14px"><label>${t("amigo_name")}</label><input id="pNick" value="${esc(r.name||"")}" /></div>
+    <div class="row" style="gap:12px">
+      <div class="field" style="width:120px"><label>${t("age")} <span class="muted">${t("optional")}</span></label><input id="pAge" type="number" inputmode="numeric" value="${r.age!=null?esc(r.age):""}" /></div>
+      <div class="field" style="flex:1"><label>${t("gender")} <span class="muted">${t("optional")}</span></label><select id="pGender">${gOpts}</select></div>
+    </div>
+    <div class="field"><label>${t("from_country")}</label><select id="pCountry">${cOpts(r.country)}</select></div>
+    <div class="field"><label>${t("proud")}</label>
+      <div class="chips" id="proudChips"></div>
+      <div class="row" style="gap:8px;margin-top:8px"><select id="proudSel" style="flex:1">${cOpts("")}</select><button class="btn sm secondary" id="proudAdd" type="button" style="white-space:nowrap">${t("add_country")}</button></div>
+      <p class="hint">${t("proud_hint")}</p></div>
     <div class="field"><label>${t("bio")}</label><input id="pBio" value="${esc(r.bio||"")}" placeholder="${t("bio_ph")}" /></div>
     <button class="btn" id="pSave">${t("save")}</button>`);
+  const paintChips=()=>{ const box=$("#proudChips",back); box.innerHTML=prouds.length?prouds.map(c=>`<span class="chip" data-c="${c}">${countryFlag(c)} ${esc(countryName(c))} <b>✕</b></span>`).join(""):`<span class="muted" style="font-size:13px">—</span>`; box.querySelectorAll(".chip").forEach(ch=>ch.onclick=()=>{ prouds=prouds.filter(x=>x!==ch.dataset.c); paintChips(); }); };
+  paintChips();
+  $("#proudAdd",back).onclick=()=>{ const v=$("#proudSel",back).value; if(v&&!prouds.includes(v)){ prouds.push(v); paintChips(); } };
   $("#avaInput",back).onchange=async e=>{ const f=e.target.files[0]; if(!f) return; try{ avatar=await fileToResizedDataUrl(f,400,0.8); $("#pAva",back).innerHTML=avatarHTML({avatar},84); }catch{ toast(t("ck_fail")); } };
-  $("#pSave",back).onclick=()=>{ saveProfile($("#pNick",back).value, avatar, $("#pBio",back).value); closeSheet(); toast(t("profile_saved")); render(); };
+  $("#pSave",back).onclick=()=>{ saveProfile({nick:$("#pNick",back).value, avatar, bio:$("#pBio",back).value, age:$("#pAge",back).value?Number($("#pAge",back).value):null, gender:$("#pGender",back).value, country:$("#pCountry",back).value, prouds}); closeSheet(); toast(t("profile_saved")); render(); };
+}
+
+/* アミーゴカード（拡散用シェア画像） */
+function loadImg(src){ return new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=src; }); }
+function roundRect(x,a,b,w,h,r){ x.beginPath(); x.moveTo(a+r,b); x.arcTo(a+w,b,a+w,b+h,r); x.arcTo(a+w,b+h,a,b+h,r); x.arcTo(a,b+h,a,b,r); x.arcTo(a,b,a+w,b,r); x.closePath(); }
+async function drawAmigoCard(){
+  const r=userRec(); const stops=DATA.guide.route.stops; const stamps=DB.get(K.stamps,{})[State.user.email]||{}; const done=stops.filter(s=>stamps[s.id]).length;
+  const W=1080,H=1350; const cv=document.createElement("canvas"); cv.width=W; cv.height=H; const x=cv.getContext("2d");
+  const g=x.createLinearGradient(0,0,W,H); g.addColorStop(0,"#c0397a"); g.addColorStop(.5,"#c8543b"); g.addColorStop(1,"#e8a93c"); x.fillStyle=g; x.fillRect(0,0,W,H);
+  const cols=["#c0397a","#e8a93c","#1d7a73","#c8543b"]; for(let i=0;i<Math.ceil(W/40);i++){ x.fillStyle=cols[i%4]; x.fillRect(i*40,0,40,20); x.fillRect(i*40,H-20,40,20); }
+  x.fillStyle="rgba(251,244,232,0.96)"; roundRect(x,70,150,W-140,H-300,40); x.fill();
+  x.textAlign="center";
+  x.fillStyle="#c8543b"; x.font="800 46px sans-serif"; x.fillText("MI AMIGO", W/2, 250);
+  x.fillStyle="#8a7d72"; x.font="600 26px sans-serif"; x.fillText("AMIGO CARD · ANTIGUA", W/2, 296);
+  const cx=W/2, cy=450, rad=110;
+  x.save(); x.beginPath(); x.arc(cx,cy,rad,0,Math.PI*2); x.closePath(); x.clip();
+  if(r.avatar){ try{ const im=await loadImg(r.avatar); x.drawImage(im,cx-rad,cy-rad,rad*2,rad*2);}catch{} } else { x.fillStyle="#f3e4d2"; x.fillRect(cx-rad,cy-rad,rad*2,rad*2); x.fillStyle="#8a5a22"; x.font="800 110px sans-serif"; x.textBaseline="middle"; x.fillText(((r.name||"?").trim()[0]||"?").toUpperCase(),cx,cy); x.textBaseline="alphabetic"; }
+  x.restore();
+  x.lineWidth=8; x.strokeStyle="#fff"; x.beginPath(); x.arc(cx,cy,rad,0,Math.PI*2); x.stroke();
+  x.fillStyle="#2a211c"; x.font="900 58px sans-serif"; x.fillText(r.name||"Amigo", W/2, 660);
+  let yy=735; x.font="600 34px sans-serif"; x.fillStyle="#5b4f45";
+  if(r.country){ x.fillText(`${t("card_from")}: ${countryFlag(r.country)} ${countryName(r.country)}`, W/2, yy); yy+=56; }
+  if(r.prouds&&r.prouds.length){ x.fillText(`${t("card_loves")}: ${r.prouds.slice(0,8).map(countryFlag).join(" ")}`, W/2, yy); yy+=56; }
+  if(r.bio){ let bio=r.bio; if(bio.length>26) bio=bio.slice(0,25)+"…"; x.font="400 28px sans-serif"; x.fillStyle="#8a7d72"; x.fillText(bio, W/2, yy); }
+  x.fillStyle="#1d7a73"; roundRect(x,W/2-200,1070,400,92,46); x.fill();
+  x.fillStyle="#fff"; x.font="800 38px sans-serif"; x.fillText(`🎯 ${t("card_stamps")} ${done}/${stops.length}`, W/2, 1128);
+  x.fillStyle="rgba(255,255,255,0.95)"; x.font="600 28px sans-serif"; x.fillText("takuha.github.io/mi-amigo", W/2, H-58);
+  return cv.toDataURL("image/png");
+}
+async function openAmigoCard(){
+  const back=openSheet(`<h2>${t("amigo_card")}</h2><div class="cardprev" id="cardPrev"><div class="muted" style="padding:50px;text-align:center">…</div></div>
+    <button class="btn gold" id="cardSave" style="margin-top:14px">${t("save_card")}</button>
+    <button class="btn teal" id="cardShare" style="margin-top:8px">${t("share_card")}</button>`);
+  let url; try{ url=await drawAmigoCard(); }catch{ toast(t("ck_fail")); return; }
+  $("#cardPrev",back).innerHTML=`<img src="${url}" style="width:100%;border-radius:16px;display:block" />`;
+  $("#cardSave",back).onclick=()=>{ const a=document.createElement("a"); a.href=url; a.download="mi_amigo_card.png"; a.click(); toast(t("card_made")); };
+  $("#cardShare",back).onclick=async()=>{ try{ if(navigator.share){ const blob=await (await fetch(url)).blob(); const file=new File([blob],"mi_amigo_card.png",{type:"image/png"}); const p={text:`Mi Amigo — ${t("card_tagline")} 🌋 ${location.origin+location.pathname}`}; if(navigator.canShare&&navigator.canShare({files:[file]})) p.files=[file]; await navigator.share(p); } else { await navigator.clipboard?.writeText(location.origin+location.pathname); toast(t("copied")); } }catch{} };
 }
 
 /* ---------- アルバム＋5プラットフォーム共有 ---------- */
@@ -545,15 +616,18 @@ function viewMyPage(){
         <div class="row" style="align-items:center">
           ${avatarHTML(userRec(),60)}
           <div style="flex:1;margin-left:4px"><strong style="font-size:18px">${esc(userRec().name||"")}</strong>
-            <div class="muted" style="font-size:13px;margin-top:2px">${esc(userRec().bio||"")}</div></div>
+            <div class="muted" style="font-size:13px;margin-top:3px">${profileMeta(userRec())||"<span style=\"opacity:.6\">—</span>"}</div></div>
           <button class="btn sm secondary" id="editProfile">${t("edit_profile")}</button>
         </div>
+        ${userRec().bio?`<p class="muted" style="font-size:13px;margin:10px 0 0">${esc(userRec().bio)}</p>`:""}
+        <button class="btn gold sm" id="makeCard" style="width:100%;margin-top:12px">${t("make_card")}</button>
       </div></div>
       <div class="section-title">${t("language")}</div><div id="myLang"></div>
       <div class="section-title">${t("reservations")}</div><div id="rl"></div>
       <button class="btn secondary" id="logout" style="margin-top:24px">${t("logout")}</button>
       <p class="hint" style="text-align:center;margin-top:18px">${t("proto_ver")}</p></div></div>`);
   $("#editProfile",wrap).onclick=openProfile;
+  $("#makeCard",wrap).onclick=openAmigoCard;
   $("#myLang",wrap).appendChild(langSeg(()=>render()));
   const list=$("#rl",wrap);
   if(!resv.length){ list.appendChild(el(`<p class="muted" style="padding:8px 2px">${t("no_resv")}</p>`)); }
