@@ -1,623 +1,454 @@
 /* =========================================================================
  * Mi Amigo — アンティグア街おこし統合アプリ（プロトタイプ）
- * 機能: ①アカウント登録/ログイン ②カレンダー予約＋決済 ③カフェチェックイン写真/アルバム/SNS共有
+ * 多言語(日英西) / 言語選択(ログイン・マイページ) / 予約決済 / 歴史ミステリー謎解き
+ * (ガイド連動・実写真投稿・5プラットフォーム共有) / 音声ガイド(再生中ハイライト) / マップ(GPS+Googleマップ)
  *
- * ⚠️ プロトタイプ注記:
- *  - データはブラウザの localStorage に保存（端末内のみ）。本番では API/DB に置き換え。
- *  - パスワードは SHA-256 + ソルトでハッシュ化しているが、安全な認証はサーバー側で
- *    bcrypt/argon2 等が必須。ここはフロント検証用の簡易実装。
- *  - 「決済」はモック。本番では Stripe 等の決済APIに接続する。
+ * ⚠️ プロトタイプ: データは localStorage（端末内）。決済はモック。認証はフロント簡易実装。
  * ===================================================================== */
-
 const DATA = window.MI_AMIGO_DATA;
 
-/* ---------- localStorage 薄ラッパ ---------- */
+/* ---------- localStorage ---------- */
 const DB = {
-  get(k, def) { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch { return def; } },
-  set(k, v) { localStorage.setItem(k, JSON.stringify(v)); },
+  get(k, def){ try{ return JSON.parse(localStorage.getItem(k)) ?? def; }catch{ return def; } },
+  set(k, v){ localStorage.setItem(k, JSON.stringify(v)); },
 };
-const K = { users: "ma_users", session: "ma_session", resv: "ma_reservations", album: "ma_album", stamps: "ma_stamps" };
+const K = { users:"ma_users", session:"ma_session", resv:"ma_reservations", album:"ma_album", stamps:"ma_stamps", lang:"ma_lang" };
 
 /* ---------- 認証 ---------- */
-async function sha256(str) {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
-  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
-}
-function randSalt() {
-  const a = new Uint8Array(16); crypto.getRandomValues(a);
-  return [...a].map(b => b.toString(16).padStart(2, "0")).join("");
-}
+async function sha256(s){ const b=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+function randSalt(){ const a=new Uint8Array(16); crypto.getRandomValues(a); return [...a].map(b=>b.toString(16).padStart(2,"0")).join(""); }
 const Auth = {
-  async register(name, email, password) {
-    email = email.trim().toLowerCase();
-    const users = DB.get(K.users, {});
-    if (users[email]) throw new Error("このメールアドレスは既に登録されています");
-    const salt = randSalt();
-    users[email] = { name: name.trim(), email, salt, passHash: await sha256(salt + password) };
-    DB.set(K.users, users);
-    DB.set(K.session, email);
-    return users[email];
-  },
-  async login(email, password) {
-    email = email.trim().toLowerCase();
-    const u = DB.get(K.users, {})[email];
-    if (!u) throw new Error("アカウントが見つかりません");
-    if (u.passHash !== await sha256(u.salt + password)) throw new Error("パスワードが違います");
-    DB.set(K.session, email);
-    return u;
-  },
-  logout() { localStorage.removeItem(K.session); },
-  current() {
-    const email = DB.get(K.session, null);
-    return email ? DB.get(K.users, {})[email] || null : null;
-  },
+  async register(name,email,password){ email=email.trim().toLowerCase(); const u=DB.get(K.users,{}); if(u[email]) throw new Error(t("err_exists")); const salt=randSalt(); u[email]={name:name.trim(),email,salt,passHash:await sha256(salt+password)}; DB.set(K.users,u); DB.set(K.session,email); return u[email]; },
+  async login(email,password){ email=email.trim().toLowerCase(); const u=DB.get(K.users,{})[email]; if(!u) throw new Error(t("err_nouser")); if(u.passHash!==await sha256(u.salt+password)) throw new Error(t("err_pass")); DB.set(K.session,email); return u; },
+  logout(){ localStorage.removeItem(K.session); },
+  current(){ const e=DB.get(K.session,null); return e ? DB.get(K.users,{})[e]||null : null; },
 };
 
 /* ---------- 状態 ---------- */
 const State = {
-  user: null,
-  view: "discover",
-  cal: { year: 0, month: 0 }, // 表示中の年月
-  lang: localStorage.getItem("ma_lang") || "ja", // 音声ガイドの言語
-  speakingId: null, // 再生中のスポットid
+  user:null, view:"discover",
+  cal:{year:0,month:0},
+  lang: localStorage.getItem(K.lang) || "ja",
+  speakingId:null,
+  geo:null, // 現在地 {lat,lng}
 };
 
+/* ---------- i18n ---------- */
+const LANGS = [["ja","日本語"],["en","English"],["es","Español"]];
+const LANG_CODE = { ja:"ja-JP", en:"en-US", es:"es-ES" };
+const I18N = {
+  ja:{ tab_discover:"探す", tab_quest:"謎解き", tab_guide:"ガイド", tab_map:"マップ", tab_album:"アルバム", tab_mypage:"マイ",
+    tagline:"アンティグアを、もっと面白く歩こう。", register:"新規登録", login:"ログイン", name:"お名前 / ニックネーム", email:"メールアドレス", password:"パスワード", pw_ph:"6文字以上",
+    create:"アカウント作成", login_btn:"ログイン", choose_lang:"言語を選択 / Language", proto_note:"プロトタイプ版です。データはこの端末内にのみ保存されます。",
+    welcome:"ようこそ", discover_sub:"アンティグアの体験・カフェ・宿を予約", book:"予約する", per:"名", official:"公式サイト",
+    pick_date:"日付を選ぶと、その日の空き枠が表示されます", booking_detail:"予約内容", remaining:"空き枠 残り", people:"名", total:"合計", pay_confirm:"💳 決済して予約を確定", no_charge:"※ プロトタイプのため実際の課金は発生しません", slots_max:"空き枠の上限です",
+    pay_title:"💳 お支払い", plan:"プラン", date:"日付", num:"人数", cardno:"カード番号（ダミー）", expiry:"有効期限", pay_now:"を支払う", back:"戻る", processing:"処理中…", booked:"✅ 予約が確定しました！",
+    quest_sub:"ガイドで語られる“場所”を探して写真を撮ろう", progress:"進捗", checkin:"チェックイン", photo:"写真", checked:"✅ 写真投稿ずみ", reward_done:"コンプリート!", reward_left:"報酬まであと",
+    ck_take:"📷 写真を撮る / 選ぶ", ck_later:"あとで", ck_hint:"この場所で写真を撮ろう（顔出し不要）。撮った写真はアルバムに保存され、SNSに投稿して拡散できます。", ck_done:"📸 写真を投稿しました！スタンプGET", ck_fail:"写真の読み込みに失敗しました",
+    guide_sub:"🎧 歩きながら聴ける音声ガイド", walk_route:"街歩きルート", listen_history:"歴史を聴く", play:"▶ 再生", stop:"■ 停止", tts_note:"※ 現在は端末の音声合成(TTS)で読み上げ。録音音声に差し替え予定。", reading:"読み上げ中…", replay:"↻ もう一度", close:"閉じる", no_tts:"この端末は音声読み上げに未対応です",
+    map_sub:"GPSで現在地から、Googleマップで道案内", enable_loc:"📍 現在地を取得して近い順に並べる", locating:"現在地を取得中…", loc_fail:"現在地を取得できませんでした", go_here:"🧭 ここへ行く（Googleマップ）", open_map:"🗺️ 地図で開く", away:"約", km_away:"km先", all_route:"🗺️ ルート全体を地図で見る",
+    album_sub:"投稿した写真を5つのSNSへ", album_empty:"まだ写真がありません。", go_quest:"謎解きへ", caption:"キャプション（SNS投稿文）", share_to:"投稿する（5プラットフォーム）", save_photo:"📥 写真を端末に保存", other_share:"その他のアプリで共有（写真つき）", delete_photo:"この写真を削除", taken:"に撮影", deleted:"削除しました", copied:"投稿文をコピーしました。アプリで貼り付けて投稿してください", shared:"共有しました！",
+    mypage_sub:"", reservations:"予約一覧", no_resv:"まだ予約はありません。「探す」から予約してみましょう。", confirmed:"確定", logout:"ログアウト", language:"言語 / Language", proto_ver:"Mi Amigo プロトタイプ — Antigua, Guatemala 🌋",
+    err_exists:"このメールアドレスは既に登録されています", err_nouser:"アカウントが見つかりません", err_pass:"パスワードが違います", err_email:"メールアドレスの形式が正しくありません", err_pwlen:"パスワードは6文字以上にしてください", err_name:"お名前を入力してください" },
+  en:{ tab_discover:"Explore", tab_quest:"Rally", tab_guide:"Guide", tab_map:"Map", tab_album:"Album", tab_mypage:"Me",
+    tagline:"Walk Antigua in a whole new way.", register:"Sign up", login:"Log in", name:"Name / Nickname", email:"Email", password:"Password", pw_ph:"6+ characters",
+    create:"Create account", login_btn:"Log in", choose_lang:"Choose language / 言語", proto_note:"Prototype. Data is stored only on this device.",
+    welcome:"Welcome", discover_sub:"Book experiences, cafes and stays in Antigua", book:"Book", per:"person", official:"Website",
+    pick_date:"Pick a date to see that day's availability", booking_detail:"Booking", remaining:"left", people:"ppl", total:"Total", pay_confirm:"💳 Pay & confirm booking", no_charge:"※ Prototype — no real charge", slots_max:"No more slots available",
+    pay_title:"💳 Payment", plan:"Plan", date:"Date", num:"People", cardno:"Card number (dummy)", expiry:"Expiry", pay_now:"Pay", back:"Back", processing:"Processing…", booked:"✅ Booking confirmed!",
+    quest_sub:"Find the places told in the guide and photograph them", progress:"Progress", checkin:"Check in", photo:"Photo", checked:"✅ Posted", reward_done:"Completed!", reward_left:"left to reward",
+    ck_take:"📷 Take / choose photo", ck_later:"Later", ck_hint:"Take a photo here (no face needed). It's saved to your album and you can share it to social media.", ck_done:"📸 Photo posted! Stamp earned", ck_fail:"Could not load photo",
+    guide_sub:"🎧 Listen while you walk", walk_route:"Walking route", listen_history:"Listen: History", play:"▶ Play", stop:"■ Stop", tts_note:"※ Currently read by device text-to-speech. Recorded audio coming.", reading:"Reading…", replay:"↻ Again", close:"Close", no_tts:"This device does not support text-to-speech",
+    map_sub:"Use GPS and get directions on Google Maps", enable_loc:"📍 Use my location & sort by nearest", locating:"Getting location…", loc_fail:"Could not get your location", go_here:"🧭 Go here (Google Maps)", open_map:"🗺️ Open in map", away:"~", km_away:"km away", all_route:"🗺️ See full route on map",
+    album_sub:"Share your photos to 5 platforms", album_empty:"No photos yet.", go_quest:"To the rally", caption:"Caption (post text)", share_to:"Post (5 platforms)", save_photo:"📥 Save photo to device", other_share:"Share via other apps (with photo)", delete_photo:"Delete this photo", taken:"taken on", deleted:"Deleted", copied:"Caption copied. Paste it in the app to post", shared:"Shared!",
+    mypage_sub:"", reservations:"Your bookings", no_resv:"No bookings yet. Try booking from Explore.", confirmed:"Confirmed", logout:"Log out", language:"Language / 言語", proto_ver:"Mi Amigo prototype — Antigua, Guatemala 🌋",
+    err_exists:"This email is already registered", err_nouser:"Account not found", err_pass:"Wrong password", err_email:"Invalid email format", err_pwlen:"Password must be 6+ characters", err_name:"Please enter your name" },
+  es:{ tab_discover:"Explorar", tab_quest:"Rally", tab_guide:"Guía", tab_map:"Mapa", tab_album:"Álbum", tab_mypage:"Yo",
+    tagline:"Camina Antigua de una forma nueva.", register:"Registrarse", login:"Entrar", name:"Nombre / Apodo", email:"Correo", password:"Contraseña", pw_ph:"6+ caracteres",
+    create:"Crear cuenta", login_btn:"Entrar", choose_lang:"Elige idioma / Language", proto_note:"Prototipo. Los datos se guardan solo en este dispositivo.",
+    welcome:"Bienvenido", discover_sub:"Reserva experiencias, cafés y hospedaje en Antigua", book:"Reservar", per:"persona", official:"Sitio web",
+    pick_date:"Elige una fecha para ver la disponibilidad", booking_detail:"Reserva", remaining:"libres", people:"pers", total:"Total", pay_confirm:"💳 Pagar y confirmar", no_charge:"※ Prototipo — sin cargo real", slots_max:"No hay más cupos",
+    pay_title:"💳 Pago", plan:"Plan", date:"Fecha", num:"Personas", cardno:"Tarjeta (ficticia)", expiry:"Vence", pay_now:"Pagar", back:"Volver", processing:"Procesando…", booked:"✅ ¡Reserva confirmada!",
+    quest_sub:"Encuentra los lugares de la guía y fotografíalos", progress:"Progreso", checkin:"Registrar", photo:"Foto", checked:"✅ Publicado", reward_done:"¡Completado!", reward_left:"para la recompensa",
+    ck_take:"📷 Tomar / elegir foto", ck_later:"Después", ck_hint:"Toma una foto aquí (sin mostrar la cara). Se guarda en tu álbum y puedes compartirla en redes.", ck_done:"📸 ¡Foto publicada! Sello obtenido", ck_fail:"No se pudo cargar la foto",
+    guide_sub:"🎧 Escucha mientras caminas", walk_route:"Ruta a pie", listen_history:"Escuchar: Historia", play:"▶ Reproducir", stop:"■ Parar", tts_note:"※ Por ahora lo lee la voz del dispositivo. Pronto audio grabado.", reading:"Leyendo…", replay:"↻ Otra vez", close:"Cerrar", no_tts:"Este dispositivo no admite lectura por voz",
+    map_sub:"Usa GPS y obtén indicaciones en Google Maps", enable_loc:"📍 Usar mi ubicación y ordenar por cercanía", locating:"Obteniendo ubicación…", loc_fail:"No se pudo obtener tu ubicación", go_here:"🧭 Ir aquí (Google Maps)", open_map:"🗺️ Abrir en el mapa", away:"~", km_away:"km", all_route:"🗺️ Ver la ruta completa",
+    album_sub:"Comparte tus fotos en 5 plataformas", album_empty:"Aún no hay fotos.", go_quest:"Al rally", caption:"Texto de la publicación", share_to:"Publicar (5 plataformas)", save_photo:"📥 Guardar foto en el dispositivo", other_share:"Compartir en otras apps (con foto)", delete_photo:"Eliminar esta foto", taken:"tomada el", deleted:"Eliminada", copied:"Texto copiado. Pégalo en la app para publicar", shared:"¡Compartido!",
+    mypage_sub:"", reservations:"Tus reservas", no_resv:"Aún no hay reservas. Reserva desde Explorar.", confirmed:"Confirmada", logout:"Salir", language:"Idioma / Language", proto_ver:"Mi Amigo prototipo — Antigua, Guatemala 🌋",
+    err_exists:"Este correo ya está registrado", err_nouser:"Cuenta no encontrada", err_pass:"Contraseña incorrecta", err_email:"Formato de correo inválido", err_pwlen:"La contraseña debe tener 6+ caracteres", err_name:"Ingresa tu nombre" },
+};
+function t(key){ const L=State.lang; return (I18N[L] && I18N[L][key]) || I18N.ja[key] || key; }
+function L(obj){ if(obj==null) return ""; if(typeof obj==="string") return obj; return obj[State.lang] || obj.ja || ""; }
+function setLang(code){ State.lang=code; localStorage.setItem(K.lang, code); }
+
 /* ---------- ユーティリティ ---------- */
-const $ = (sel, root = document) => root.querySelector(sel);
-const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; };
-const fmtUSD = (n) => "$" + n.toFixed(0);
-const fmtJPY = (usd) => "約" + Math.round(usd * 150).toLocaleString() + "円";
-// 写真があれば背景画像、なければ emoji＋グラデーション
-const thumbStyle = (item) => item.img
-  ? `background-image:url('${item.img}');background-size:cover;background-position:center;`
-  : "background:linear-gradient(135deg,#fce9d4,#f6dbe5)";
-const thumbInner = (item) => item.img ? "" : item.emoji;
-const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; };
-const dateKey = (y, m, d) => `${y}-${m}-${d}`;
+const $ = (s,r=document)=>r.querySelector(s);
+const el = (h)=>{ const t=document.createElement("template"); t.innerHTML=h.trim(); return t.content.firstElementChild; };
+const esc = (s)=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const fmtUSD = (n)=>"$"+n.toFixed(0);
+const fmtJPY = (usd)=>"≈"+Math.round(usd*150).toLocaleString()+(State.lang==="ja"?"円":" JPY");
+const dateKey = (y,m,d)=>`${y}-${m}-${d}`;
+const thumbStyle = (it)=> it.img ? `background-image:url('${it.img}');background-size:cover;background-position:center;` : "background:linear-gradient(135deg,#fce9d4,#f6dbe5)";
+const thumbInner = (it)=> it.img ? "" : it.emoji;
 
-function seed(str) { // 文字列 → 0..1 の安定した擬似乱数
-  let h = 2166136261;
-  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
-  return ((h >>> 0) % 1000) / 1000;
-}
-function capacityFor(listing, dKey) { // その日の総枠数（安定）
-  const s = seed(listing.id + dKey);
-  return Math.max(2, Math.round(listing.maxSlots * (0.3 + s * 0.7)));
-}
-function bookedFor(listingId, dKey) {
-  return DB.get(K.resv, []).filter(r => r.listingId === listingId && r.dateKey === dKey)
-    .reduce((sum, r) => sum + r.qty, 0);
-}
-function remainingFor(listing, dKey) { return Math.max(0, capacityFor(listing, dKey) - bookedFor(listing.id, dKey)); }
+function seed(str){ let h=2166136261; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619);} return ((h>>>0)%1000)/1000; }
+function capacityFor(l,dk){ return Math.max(2, Math.round(l.maxSlots*(0.3+seed(l.id+dk)*0.7))); }
+function bookedFor(id,dk){ return DB.get(K.resv,[]).filter(r=>r.listingId===id&&r.dateKey===dk).reduce((s,r)=>s+r.qty,0); }
+function remainingFor(l,dk){ return Math.max(0, capacityFor(l,dk)-bookedFor(l.id,dk)); }
 
-function toast(msg) {
-  $(".toast")?.remove();
-  const t = el(`<div class="toast">${msg}</div>`);
-  $(".phone").appendChild(t);
-  setTimeout(() => t.remove(), 2200);
-}
-function closeSheet() { $(".sheet-back")?.remove(); }
-function openSheet(innerHtml) {
-  closeSheet();
-  const back = el(`<div class="sheet-back"><div class="sheet"><div class="grab"></div>${innerHtml}</div></div>`);
-  back.addEventListener("click", (e) => { if (e.target === back) closeSheet(); });
-  $(".phone").appendChild(back);
-  return back;
-}
+function toast(msg){ $(".toast")?.remove(); const t=el(`<div class="toast">${msg}</div>`); $(".phone").appendChild(t); setTimeout(()=>t.remove(),2600); }
+function closeSheet(){ $(".sheet-back")?.remove(); }
+function openSheet(html){ closeSheet(); const b=el(`<div class="sheet-back"><div class="sheet"><div class="grab"></div>${html}</div></div>`); b.addEventListener("click",e=>{ if(e.target===b) closeSheet(); }); $(".phone").appendChild(b); return b; }
 
-/* 画像を縮小して dataURL 化（localStorage 容量対策） */
-function fileToResizedDataUrl(file, max = 900, quality = 0.78) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const reader = new FileReader();
-    reader.onload = () => { img.src = reader.result; };
-    reader.onerror = reject;
-    img.onload = () => {
-      let { width: w, height: h } = img;
-      if (w > h && w > max) { h = h * max / w; w = max; }
-      else if (h > max) { w = w * max / h; h = max; }
-      const c = document.createElement("canvas"); c.width = w; c.height = h;
-      c.getContext("2d").drawImage(img, 0, 0, w, h);
-      resolve(c.toDataURL("image/jpeg", quality));
-    };
-    img.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
+function fileToResizedDataUrl(file,max=900,q=0.78){ return new Promise((res,rej)=>{ const img=new Image(),r=new FileReader(); r.onload=()=>img.src=r.result; r.onerror=rej; img.onload=()=>{ let{width:w,height:h}=img; if(w>h&&w>max){h=h*max/w;w=max;} else if(h>max){w=w*max/h;h=max;} const c=document.createElement("canvas"); c.width=w; c.height=h; c.getContext("2d").drawImage(img,0,0,w,h); res(c.toDataURL("image/jpeg",q)); }; img.onerror=rej; r.readAsDataURL(file); }); }
+
+/* ---------- 音声(TTS) ---------- */
+function stopSpeak(){ try{ window.speechSynthesis&&speechSynthesis.cancel(); }catch{} State.speakingId=null; }
 
 /* =========================================================================
- * 画面描画
+ * 描画
  * ===================================================================== */
-function render() {
-  const screen = $("#screen");
-  const tabbar = $("#tabbar");
-  if (!State.user) { tabbar.classList.add("hidden"); screen.innerHTML = ""; screen.appendChild(viewAuth()); return; }
+function render(){
+  const screen=$("#screen"), tabbar=$("#tabbar");
+  // タブ名を言語反映
+  tabbar.querySelectorAll(".tab").forEach(tb=>{ const lab=tb.querySelector(".tab-label"); if(lab) lab.textContent=t("tab_"+tb.dataset.view); });
+  if(!State.user){ tabbar.classList.add("hidden"); screen.innerHTML=""; screen.appendChild(viewAuth()); return; }
   tabbar.classList.remove("hidden");
-  [...tabbar.querySelectorAll(".tab")].forEach(t => t.classList.toggle("active", t.dataset.view === State.view));
-  screen.innerHTML = "";
-  const v = { discover: viewDiscover, quest: viewQuest, guide: viewGuide, album: viewAlbum, mypage: viewMyPage }[State.view]();
-  screen.appendChild(v);
-  screen.scrollTop = 0;
+  tabbar.querySelectorAll(".tab").forEach(tb=>tb.classList.toggle("active", tb.dataset.view===State.view));
+  screen.innerHTML="";
+  const v={ discover:viewDiscover, quest:viewQuest, guide:viewGuide, map:viewMap, album:viewAlbum, mypage:viewMyPage }[State.view]();
+  screen.appendChild(v); screen.scrollTop=0;
 }
 
-/* ---------- ① 認証画面 ---------- */
-function viewAuth() {
-  let mode = "register";
-  const wrap = el(`<div>
-    <div class="auth-hero">
-      <div class="volcano">🌋🌋🌋</div>
-      <h1>Mi Amigo</h1>
-      <p>アンティグアを、もっと面白く歩こう。</p>
-    </div>
+/* 言語セグメント（共通） */
+function langSeg(onPick){
+  const seg=el(`<div class="langseg"></div>`);
+  LANGS.forEach(([code,label])=>{ const b=el(`<button class="${code===State.lang?"on":""}">${label}</button>`); b.onclick=()=>{ stopSpeak(); setLang(code); onPick&&onPick(); }; seg.appendChild(b); });
+  return seg;
+}
+
+/* ---------- 認証（言語選択を最初に） ---------- */
+function viewAuth(){
+  let mode="register";
+  const wrap=el(`<div>
+    <div class="auth-hero"><div class="volcano">🌋🌋🌋</div><h1>Mi Amigo</h1><p id="aTag">${t("tagline")}</p></div>
     <div class="weave"></div>
     <div class="pad">
-      <div class="auth-tabs">
-        <button data-m="register" class="active">新規登録</button>
-        <button data-m="login">ログイン</button>
+      <label class="field-label">${t("choose_lang")}</label>
+      <div id="authLang"></div>
+      <div class="auth-tabs" style="margin-top:18px;">
+        <button data-m="register" class="active">${t("register")}</button>
+        <button data-m="login">${t("login")}</button>
       </div>
       <form id="authForm">
-        <div class="field" id="nameField">
-          <label>お名前 / ニックネーム</label>
-          <input name="name" autocomplete="name" placeholder="Taku" />
-        </div>
-        <div class="field">
-          <label>メールアドレス</label>
-          <input name="email" type="email" autocomplete="email" placeholder="you@example.com" />
-        </div>
-        <div class="field">
-          <label>パスワード</label>
-          <input name="password" type="password" autocomplete="new-password" placeholder="6文字以上" />
-        </div>
+        <div class="field" id="nameField"><label>${t("name")}</label><input name="name" autocomplete="name" placeholder="Taku" /></div>
+        <div class="field"><label>${t("email")}</label><input name="email" type="email" autocomplete="email" placeholder="you@example.com" /></div>
+        <div class="field"><label>${t("password")}</label><input name="password" type="password" autocomplete="new-password" placeholder="${t("pw_ph")}" /></div>
         <p class="error" id="authError"></p>
-        <button class="btn" type="submit" id="authSubmit">アカウント作成</button>
-        <p class="hint" style="text-align:center;margin-top:14px">
-          プロトタイプ版です。データはこの端末内にのみ保存されます。
-        </p>
+        <button class="btn" type="submit" id="authSubmit">${t("create")}</button>
+        <p class="hint" style="text-align:center;margin-top:14px">${t("proto_note")}</p>
       </form>
     </div>
   </div>`);
-
-  const setMode = (m) => {
-    mode = m;
-    wrap.querySelectorAll(".auth-tabs button").forEach(b => b.classList.toggle("active", b.dataset.m === m));
-    $("#nameField", wrap).style.display = m === "register" ? "" : "none";
-    $("#authSubmit", wrap).textContent = m === "register" ? "アカウント作成" : "ログイン";
-    $("#authError", wrap).textContent = "";
-  };
-  wrap.querySelectorAll(".auth-tabs button").forEach(b => b.onclick = () => setMode(b.dataset.m));
-
-  $("#authForm", wrap).addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const f = e.target;
-    const name = f.name.value, email = f.email.value, pw = f.password.value;
-    const err = $("#authError", wrap);
-    err.textContent = "";
-    if (!email.includes("@")) return err.textContent = "メールアドレスの形式が正しくありません";
-    if (pw.length < 6) return err.textContent = "パスワードは6文字以上にしてください";
-    if (mode === "register" && !name.trim()) return err.textContent = "お名前を入力してください";
-    try {
-      const u = mode === "register" ? await Auth.register(name, email, pw) : await Auth.login(email, pw);
-      State.user = u; State.view = "discover";
-      toast(`ようこそ、${u.name} さん！`);
-      render();
-    } catch (ex) { err.textContent = ex.message; }
+  $("#authLang",wrap).appendChild(langSeg(()=>render())); // 言語変更で画面再描画
+  const setMode=(m)=>{ mode=m; wrap.querySelectorAll(".auth-tabs button").forEach(b=>b.classList.toggle("active",b.dataset.m===m)); $("#nameField",wrap).style.display=m==="register"?"":"none"; $("#authSubmit",wrap).textContent=m==="register"?t("create"):t("login_btn"); $("#authError",wrap).textContent=""; };
+  wrap.querySelectorAll(".auth-tabs button").forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+  $("#authForm",wrap).addEventListener("submit",async e=>{
+    e.preventDefault(); const f=e.target, err=$("#authError",wrap); err.textContent="";
+    const name=f.name.value,email=f.email.value,pw=f.password.value;
+    if(!email.includes("@")) return err.textContent=t("err_email");
+    if(pw.length<6) return err.textContent=t("err_pwlen");
+    if(mode==="register"&&!name.trim()) return err.textContent=t("err_name");
+    try{ const u=mode==="register"?await Auth.register(name,email,pw):await Auth.login(email,pw); State.user=u; State.view="discover"; toast(`${t("welcome")}, ${u.name}!`); render(); }
+    catch(ex){ err.textContent=ex.message; }
   });
   return wrap;
 }
 
-/* ---------- ② 探す（カレンダー予約＋決済） ---------- */
-function viewDiscover() {
-  const wrap = el(`<div>
-    <div class="topbar"><h1>探す</h1><p class="sub">アンティグアの体験・カフェ・宿を予約</p></div>
-    <div class="pad" id="listings"></div>
-  </div>`);
-  const labels = { exp: ["exp", "体験"], food: ["food", "飲食"], stay: ["stay", "宿"] };
-  const root = $("#listings", wrap);
-  DATA.listings.forEach(l => {
-    const [cls, jp] = labels[l.type] || ["exp", "体験"];
-    const card = el(`<div class="card">
+/* ---------- 探す（多言語） ---------- */
+function viewDiscover(){
+  const wrap=el(`<div><div class="topbar"><h1>${t("tab_discover")}</h1><p class="sub">${t("discover_sub")}</p></div><div class="pad" id="listings"></div></div>`);
+  const labels={ exp:["exp",{ja:"体験",en:"Experience",es:"Experiencia"}], food:["food",{ja:"飲食",en:"Food",es:"Comida"}], stay:["stay",{ja:"宿",en:"Stay",es:"Hospedaje"}] };
+  const root=$("#listings",wrap);
+  DATA.listings.forEach(l=>{
+    const [cls,jp]=labels[l.type]||labels.exp;
+    const card=el(`<div class="card">
       <div class="thumb" style="${thumbStyle(l)}">${thumbInner(l)}</div>
       <div class="card-body">
-        <span class="badge ${cls}">${jp}</span>
-        <h3 style="margin:8px 0 4px;font-size:17px">${l.title}</h3>
-        <p class="muted" style="margin:0 0 6px;font-size:13px">${l.desc}</p>
-        <p class="muted" style="margin:0 0 12px;font-size:12px">📍 ${l.area || ""}${l.link ? ` · <a href="${l.link}" target="_blank" rel="noopener" style="color:var(--teal)">公式サイト</a>` : ""}</p>
-        <div class="row">
-          <div><span class="price">${fmtUSD(l.price)}</span> <span class="muted" style="font-size:12px">/ 名　${fmtJPY(l.price)}</span></div>
-          <span class="spacer"></span>
-          <button class="btn sm" data-id="${l.id}">予約する</button>
-        </div>
-      </div>
-    </div>`);
-    $("button", card).onclick = () => openBooking(l);
-    root.appendChild(card);
+        <span class="badge ${cls}">${L(jp)}</span>
+        <h3 style="margin:8px 0 4px;font-size:17px">${esc(L(l.title))}</h3>
+        <p class="muted" style="margin:0 0 6px;font-size:13px">${esc(L(l.desc))}</p>
+        <p class="muted" style="margin:0 0 12px;font-size:12px">📍 ${esc(l.area||"")}${l.link?` · <a href="${l.link}" target="_blank" rel="noopener" style="color:var(--teal)">${t("official")}</a>`:""}</p>
+        <div class="row"><div><span class="price">${fmtUSD(l.price)}</span> <span class="muted" style="font-size:12px">/ ${t("per")}　${fmtJPY(l.price)}</span></div><span class="spacer"></span><button class="btn sm" data-id="${l.id}">${t("book")}</button></div>
+      </div></div>`);
+    $("button",card).onclick=()=>openBooking(l); root.appendChild(card);
   });
   return wrap;
 }
 
-function openBooking(listing) {
-  const now = new Date();
-  State.cal = { year: now.getFullYear(), month: now.getMonth() };
-  let selected = null; // dateKey
-  let qty = 1;
-
-  const back = openSheet(`<h2>${listing.emoji} ${listing.title}</h2>
-    <p class="muted" style="margin:-8px 0 14px;font-size:13px">日付を選ぶと、その日の空き枠が表示されます</p>
-    <div id="calMount"></div>
-    <div id="bookPanel"></div>`);
-
-  function renderCal() {
-    const { year, month } = State.cal;
-    const first = new Date(year, month, 1).getDay();
-    const days = new Date(year, month + 1, 0).getDate();
-    const dows = ["日","月","火","水","木","金","土"];
-    const today = new Date(); today.setHours(0,0,0,0);
-
-    let cells = dows.map(d => `<div class="cal-dow">${d}</div>`).join("");
-    for (let i = 0; i < first; i++) cells += `<div class="cal-cell empty"></div>`;
-    for (let d = 1; d <= days; d++) {
-      const dk = dateKey(year, month, d);
-      const cellDate = new Date(year, month, d);
-      const isPast = cellDate < today;
-      const rem = remainingFor(listing, dk);
-      const isFull = rem <= 0;
-      const cls = ["cal-cell", isPast ? "past" : "", isFull && !isPast ? "full" : "", selected === dk ? "sel" : ""].join(" ");
-      const slotTxt = isPast ? "" : (isFull ? "満" : `残${rem}`);
-      cells += `<div class="${cls}" data-dk="${isPast || isFull ? "" : dk}">
-        <span class="d">${d}</span><span class="slots">${slotTxt}</span>
-        ${!isPast && !isFull ? '<span class="dot"></span>' : ""}
-      </div>`;
-    }
-    const mount = $("#calMount", back);
-    mount.innerHTML = `<div class="cal">
-      <div class="cal-head">
-        <button id="prevM">‹</button>
-        <strong>${year}年 ${month + 1}月</strong>
-        <button id="nextM">›</button>
-      </div>
-      <div class="cal-grid">${cells}</div>
-    </div>`;
-    $("#prevM", mount).onclick = () => { State.cal.month--; if (State.cal.month < 0) { State.cal.month = 11; State.cal.year--; } renderCal(); };
-    $("#nextM", mount).onclick = () => { State.cal.month++; if (State.cal.month > 11) { State.cal.month = 0; State.cal.year++; } renderCal(); };
-    mount.querySelectorAll(".cal-cell[data-dk]").forEach(c => {
-      if (!c.dataset.dk) return;
-      c.onclick = () => { selected = c.dataset.dk; qty = 1; renderCal(); renderPanel(); };
-    });
+function openBooking(listing){
+  const now=new Date(); State.cal={year:now.getFullYear(),month:now.getMonth()};
+  let selected=null, qty=1;
+  const back=openSheet(`<h2>${listing.emoji} ${esc(L(listing.title))}</h2><p class="muted" style="margin:-8px 0 14px;font-size:13px">${t("pick_date")}</p><div id="calMount"></div><div id="bookPanel"></div>`);
+  function renderCal(){
+    const {year,month}=State.cal; const first=new Date(year,month,1).getDay(); const days=new Date(year,month+1,0).getDate();
+    const dows=({ja:["日","月","火","水","木","金","土"],en:["Su","Mo","Tu","We","Th","Fr","Sa"],es:["Do","Lu","Ma","Mi","Ju","Vi","Sa"]})[State.lang];
+    const today=new Date(); today.setHours(0,0,0,0);
+    let cells=dows.map(d=>`<div class="cal-dow">${d}</div>`).join("");
+    for(let i=0;i<first;i++) cells+=`<div class="cal-cell empty"></div>`;
+    for(let d=1;d<=days;d++){ const dk=dateKey(year,month,d); const cd=new Date(year,month,d); const past=cd<today; const rem=remainingFor(listing,dk); const full=rem<=0;
+      const cls=["cal-cell",past?"past":"",full&&!past?"full":"",selected===dk?"sel":""].join(" ");
+      const txt=past?"":(full?(State.lang==="ja"?"満":"x"):(State.lang==="ja"?"残"+rem:rem));
+      cells+=`<div class="${cls}" data-dk="${past||full?"":dk}"><span class="d">${d}</span><span class="slots">${txt}</span>${!past&&!full?'<span class="dot"></span>':""}</div>`; }
+    const m=$("#calMount",back); m.innerHTML=`<div class="cal"><div class="cal-head"><button id="pm">‹</button><strong>${year} / ${month+1}</strong><button id="nm">›</button></div><div class="cal-grid">${cells}</div></div>`;
+    $("#pm",m).onclick=()=>{ State.cal.month--; if(State.cal.month<0){State.cal.month=11;State.cal.year--;} renderCal(); };
+    $("#nm",m).onclick=()=>{ State.cal.month++; if(State.cal.month>11){State.cal.month=0;State.cal.year++;} renderCal(); };
+    m.querySelectorAll(".cal-cell[data-dk]").forEach(c=>{ if(!c.dataset.dk) return; c.onclick=()=>{ selected=c.dataset.dk; qty=1; renderCal(); renderPanel(); }; });
   }
-
-  function renderPanel() {
-    const panel = $("#bookPanel", back);
-    if (!selected) { panel.innerHTML = ""; return; }
-    const [y, m, d] = selected.split("-").map(Number);
-    const rem = remainingFor(listing, selected);
-    const total = listing.price * qty;
-    panel.innerHTML = `
-      <div class="section-title">予約内容</div>
-      <div class="row" style="margin-bottom:12px">
-        <div>📅 ${y}年${m + 1}月${d}日<br><span class="muted" style="font-size:12px">空き枠 残り ${rem}</span></div>
-        <span class="spacer"></span>
-        <div class="row" style="gap:8px">
-          <button class="btn secondary sm" id="minus" style="width:38px">−</button>
-          <strong style="min-width:24px;text-align:center">${qty}名</strong>
-          <button class="btn secondary sm" id="plus" style="width:38px">＋</button>
-        </div>
-      </div>
-      <div class="card" style="margin-bottom:14px"><div class="card-body">
-        <div class="pay-row"><span>${listing.title}</span><span>${fmtUSD(listing.price)} × ${qty}</span></div>
-        <div class="pay-total"><span>合計</span><span>${fmtUSD(total)} <span class="muted" style="font-size:13px;font-weight:500">${fmtJPY(total)}</span></span></div>
-      </div></div>
-      <button class="btn teal" id="payBtn">💳 決済して予約を確定</button>
-      <p class="hint" style="text-align:center">※ プロトタイプのため実際の課金は発生しません</p>`;
-    $("#minus", panel).onclick = () => { if (qty > 1) { qty--; renderPanel(); } };
-    $("#plus", panel).onclick = () => { if (qty < rem) { qty++; renderPanel(); } else toast("空き枠の上限です"); };
-    $("#payBtn", panel).onclick = () => openPayment(listing, selected, qty);
+  function renderPanel(){
+    const p=$("#bookPanel",back); if(!selected){ p.innerHTML=""; return; }
+    const [y,mo,d]=selected.split("-").map(Number); const rem=remainingFor(listing,selected); const total=listing.price*qty;
+    p.innerHTML=`<div class="section-title">${t("booking_detail")}</div>
+      <div class="row" style="margin-bottom:12px"><div>📅 ${y}/${mo+1}/${d}<br><span class="muted" style="font-size:12px">${t("remaining")} ${rem}</span></div><span class="spacer"></span>
+      <div class="row" style="gap:8px"><button class="btn secondary sm" id="minus" style="width:38px">−</button><strong style="min-width:30px;text-align:center">${qty}</strong><button class="btn secondary sm" id="plus" style="width:38px">＋</button></div></div>
+      <div class="card" style="margin-bottom:14px"><div class="card-body"><div class="pay-row"><span>${esc(L(listing.title))}</span><span>${fmtUSD(listing.price)} × ${qty}</span></div>
+      <div class="pay-total"><span>${t("total")}</span><span>${fmtUSD(total)} <span class="muted" style="font-size:13px;font-weight:500">${fmtJPY(total)}</span></span></div></div></div>
+      <button class="btn teal" id="payBtn">${t("pay_confirm")}</button><p class="hint" style="text-align:center">${t("no_charge")}</p>`;
+    $("#minus",p).onclick=()=>{ if(qty>1){qty--;renderPanel();} };
+    $("#plus",p).onclick=()=>{ if(qty<rem){qty++;renderPanel();} else toast(t("slots_max")); };
+    $("#payBtn",p).onclick=()=>openPayment(listing,selected,qty);
   }
-
   renderCal();
 }
 
-function openPayment(listing, dKey, qty) {
-  const total = listing.price * qty;
-  const [y, m, d] = dKey.split("-").map(Number);
-  const back = openSheet(`<h2>💳 お支払い</h2>
+function openPayment(listing,dk,qty){
+  const total=listing.price*qty; const [y,mo,d]=dk.split("-").map(Number);
+  const back=openSheet(`<h2>${t("pay_title")}</h2>
     <div class="card"><div class="card-body">
-      <div class="pay-row"><span class="muted">プラン</span><span>${listing.title}</span></div>
-      <div class="pay-row"><span class="muted">日付</span><span>${y}/${m + 1}/${d}</span></div>
-      <div class="pay-row"><span class="muted">人数</span><span>${qty}名</span></div>
-      <div class="pay-total"><span>合計</span><span>${fmtUSD(total)}</span></div>
-    </div></div>
-    <div class="field"><label>カード番号（ダミー）</label><input id="cc" inputmode="numeric" placeholder="4242 4242 4242 4242" value="4242 4242 4242 4242" /></div>
-    <div class="row" style="gap:12px">
-      <div class="field" style="flex:1"><label>有効期限</label><input value="12 / 28" /></div>
-      <div class="field" style="width:110px"><label>CVC</label><input value="123" /></div>
-    </div>
-    <button class="btn" id="confirmPay">${fmtUSD(total)} を支払う</button>
-    <button class="btn ghost" id="cancelPay" style="margin-top:8px">戻る</button>`);
-
-  $("#cancelPay", back).onclick = closeSheet;
-  $("#confirmPay", back).onclick = () => {
-    const btn = $("#confirmPay", back);
-    btn.disabled = true; btn.textContent = "処理中…";
-    setTimeout(() => {
-      const resv = DB.get(K.resv, []);
-      resv.push({ id: "r" + Date.now(), userEmail: State.user.email, listingId: listing.id,
-        title: listing.title, emoji: listing.emoji, dateKey: dKey, qty, total, createdAt: Date.now() });
-      DB.set(K.resv, resv);
-      closeSheet();
-      toast("✅ 予約が確定しました！");
-      State.view = "mypage"; render();
-    }, 900);
-  };
+      <div class="pay-row"><span class="muted">${t("plan")}</span><span>${esc(L(listing.title))}</span></div>
+      <div class="pay-row"><span class="muted">${t("date")}</span><span>${y}/${mo+1}/${d}</span></div>
+      <div class="pay-row"><span class="muted">${t("num")}</span><span>${qty}</span></div>
+      <div class="pay-total"><span>${t("total")}</span><span>${fmtUSD(total)}</span></div></div></div>
+    <div class="field"><label>${t("cardno")}</label><input inputmode="numeric" value="4242 4242 4242 4242" /></div>
+    <div class="row" style="gap:12px"><div class="field" style="flex:1"><label>${t("expiry")}</label><input value="12 / 28" /></div><div class="field" style="width:110px"><label>CVC</label><input value="123" /></div></div>
+    <button class="btn" id="cp">${fmtUSD(total)} ${t("pay_now")}</button><button class="btn ghost" id="cc" style="margin-top:8px">${t("back")}</button>`);
+  $("#cc",back).onclick=closeSheet;
+  $("#cp",back).onclick=()=>{ const b=$("#cp",back); b.disabled=true; b.textContent=t("processing");
+    setTimeout(()=>{ const r=DB.get(K.resv,[]); r.push({id:"r"+Date.now(),userEmail:State.user.email,listingId:listing.id,title:L(listing.title),emoji:listing.emoji,dateKey:dk,qty,total,createdAt:Date.now()}); DB.set(K.resv,r); closeSheet(); toast(t("booked")); State.view="mypage"; render(); },900); };
 }
 
-/* ---------- ③ 謎解き（カフェチェックイン＋写真） ---------- */
-function viewQuest() {
-  const stamps = DB.get(K.stamps, {})[State.user.email] || {};
-  const done = DATA.quest.cafes.filter(c => stamps[c.id]).length;
-  const wrap = el(`<div>
-    <div class="topbar"><h1>謎解きラリー</h1><p class="sub">${DATA.quest.title}</p></div>
+/* ---------- 謎解き（ガイド連動・歴史ミステリー） ---------- */
+function viewQuest(){
+  const stops=DATA.guide.route.stops;
+  const stamps=DB.get(K.stamps,{})[State.user.email]||{};
+  const done=stops.filter(s=>stamps[s.id]).length;
+  const wrap=el(`<div><div class="topbar"><h1>${esc(L(DATA.quest.title))}</h1><p class="sub">${t("quest_sub")}</p></div>
     <div class="pad">
       <div class="card"><div class="card-body">
-        <div class="row"><strong>進捗 ${done} / ${DATA.quest.cafes.length}</strong><span class="spacer"></span>
-        <span class="badge exp">🎁 ${done === DATA.quest.cafes.length ? "コンプリート!" : "報酬まであと" + (DATA.quest.cafes.length - done)}</span></div>
-        <div class="stamp" id="stamps"></div>
-        <p class="hint">${DATA.quest.reward}</p>
-      </div></div>
-      <div class="section-title">カフェをチェックイン</div>
-      <div id="cafeList"></div>
-    </div>
-  </div>`);
-
-  const sm = $("#stamps", wrap);
-  DATA.quest.cafes.forEach(c => sm.appendChild(el(`<div class="s ${stamps[c.id] ? "on" : ""}">${stamps[c.id] ? "✓" : c.emoji}</div>`)));
-
-  const list = $("#cafeList", wrap);
-  DATA.quest.cafes.forEach((c, i) => {
-    const got = !!stamps[c.id];
-    const item = el(`<div class="list-item">
-      <div class="ava">${c.emoji}</div>
-      <div style="flex:1">
-        <strong>${i + 1}. ${c.name}</strong>
-        ${c.area ? `<div class="muted" style="font-size:12px;margin-top:2px">📍 ${c.area}</div>` : ""}
-        <div class="muted" style="font-size:12px;margin-top:2px">${got ? "✅ チェックイン済み" : "🔍 " + c.riddle}</div>
-      </div>
-      <button class="btn sm ${got ? "secondary" : ""}" data-id="${c.id}">${got ? "写真" : "チェックイン"}</button>
-    </div>`);
-    $("button", item).onclick = () => got ? (State.view = "album", render()) : openCheckin(c);
+        <div class="row"><strong>${t("progress")} ${done} / ${stops.length}</strong><span class="spacer"></span>
+        <span class="badge exp">🎁 ${done===stops.length?t("reward_done"):t("reward_left")+" "+(stops.length-done)}</span></div>
+        <div class="stamp" id="stamps"></div><p class="hint">${esc(L(DATA.quest.reward))}</p></div></div>
+      <div id="qlist" style="margin-top:6px"></div></div></div>`);
+  const sm=$("#stamps",wrap); stops.forEach(s=>sm.appendChild(el(`<div class="s ${stamps[s.id]?"on":""}">${stamps[s.id]?"✓":s.emoji}</div>`)));
+  const list=$("#qlist",wrap);
+  stops.forEach((s,i)=>{ const got=!!stamps[s.id];
+    const item=el(`<div class="list-item"><div class="ava">${s.emoji}</div>
+      <div style="flex:1"><strong>${i+1}. ${esc(L(s.title))}</strong>
+        <div class="muted" style="font-size:12px;margin-top:3px">${got?t("checked"):"🔍 "+esc(L(s.riddle))}</div></div>
+      <button class="btn sm ${got?"secondary":""}" data-id="${s.id}">${got?t("photo"):t("checkin")}</button></div>`);
+    $("button",item).onclick=()=> got ? (State.view="album",render()) : openCheckin(s);
     list.appendChild(item);
   });
   return wrap;
 }
 
-function openCheckin(cafe) {
-  const back = openSheet(`<h2>${cafe.emoji} ${cafe.name}</h2>
-    <div class="card"><div class="card-body">
-      <span class="badge cafe">🔍 謎</span>
-      <p style="margin:8px 0 0">${cafe.riddle}</p>
-    </div></div>
-    <p class="muted" style="font-size:13px;margin:4px 2px 14px">このカフェで写真を撮ってチェックインしよう。撮った写真はアルバムに保存され、SNSに投稿して宣伝できます。</p>
-    <label class="btn gold" for="camInput">📷 写真を撮る / 選ぶ</label>
+function openCheckin(spot){
+  const back=openSheet(`<h2>${spot.emoji} ${esc(L(spot.title))}</h2>
+    <div class="card"><div class="card-body"><span class="badge cafe">🔍</span><p style="margin:8px 0 0">${esc(L(spot.riddle))}</p></div></div>
+    <p class="muted" style="font-size:13px;margin:4px 2px 14px">${t("ck_hint")}</p>
+    <label class="btn gold" for="camInput">${t("ck_take")}</label>
     <input id="camInput" type="file" accept="image/*" capture="environment" style="display:none" />
-    <button class="btn ghost" id="cancelCk" style="margin-top:8px">あとで</button>`);
-
-  $("#cancelCk", back).onclick = closeSheet;
-  $("#camInput", back).onchange = async (e) => {
-    const file = e.target.files[0]; if (!file) return;
-    const lbl = back.querySelector('label[for="camInput"]');
-    lbl.textContent = "処理中…";
-    try {
-      const dataUrl = await fileToResizedDataUrl(file);
-      const album = DB.get(K.album, []);
-      album.unshift({ id: "p" + Date.now(), userEmail: State.user.email, cafeId: cafe.id,
-        cafe: cafe.name, dataUrl, caption: `${cafe.name} でチェックイン！ #MiAmigo #Antigua`, createdAt: Date.now() });
-      DB.set(K.album, album);
-      const allStamps = DB.get(K.stamps, {});
-      allStamps[State.user.email] = { ...(allStamps[State.user.email] || {}), [cafe.id]: true };
-      DB.set(K.stamps, allStamps);
-      closeSheet();
-      toast("📸 チェックイン完了！スタンプGET");
-      render();
-    } catch { toast("写真の読み込みに失敗しました"); lbl.textContent = "📷 写真を撮る / 選ぶ"; }
+    <button class="btn ghost" id="ckLater" style="margin-top:8px">${t("ck_later")}</button>`);
+  $("#ckLater",back).onclick=closeSheet;
+  $("#camInput",back).onchange=async e=>{ const file=e.target.files[0]; if(!file) return; const lbl=back.querySelector('label[for="camInput"]'); lbl.textContent=t("processing");
+    try{ const dataUrl=await fileToResizedDataUrl(file);
+      const album=DB.get(K.album,[]); album.unshift({id:"p"+Date.now(),userEmail:State.user.email,spotId:spot.id,place:L(spot.title),dataUrl,caption:`${L(spot.title)} — Antigua, Guatemala 🌋 #MiAmigo #Antigua`,createdAt:Date.now()}); DB.set(K.album,album);
+      const all=DB.get(K.stamps,{}); all[State.user.email]={...(all[State.user.email]||{}),[spot.id]:true}; DB.set(K.stamps,all);
+      closeSheet(); toast(t("ck_done")); render();
+    }catch{ toast(t("ck_fail")); lbl.textContent=t("ck_take"); }
   };
 }
 
-/* ---------- アルバム＋SNS共有 ---------- */
-function viewAlbum() {
-  const photos = DB.get(K.album, []).filter(p => p.userEmail === State.user.email);
-  const wrap = el(`<div>
-    <div class="topbar"><h1>アルバム</h1><p class="sub">チェックインした写真をSNSへ</p></div>
-    <div class="pad" id="albumBody"></div>
-  </div>`);
-  const body = $("#albumBody", wrap);
-  if (!photos.length) {
-    body.appendChild(el(`<div class="empty-state"><div class="big">📸</div>
-      <p>まだ写真がありません。<br>「謎解き」タブからカフェにチェックインしよう。</p>
-      <button class="btn" id="goQuest" style="max-width:220px;margin:8px auto 0">謎解きへ</button></div>`));
-    $("#goQuest", body).onclick = () => { State.view = "quest"; render(); };
-    return wrap;
-  }
-  const grid = el(`<div class="album-grid"></div>`);
-  photos.forEach(p => {
-    const img = el(`<img class="ph" src="${p.dataUrl}" alt="${p.cafe}" />`);
-    img.onclick = () => openPhoto(p);
-    grid.appendChild(img);
-  });
-  body.appendChild(grid);
-  return wrap;
-}
-
-function openPhoto(p) {
-  const d = new Date(p.createdAt);
-  const back = openSheet(`<h2>📸 ${p.cafe}</h2>
-    <img src="${p.dataUrl}" style="width:100%;border-radius:16px;margin-bottom:12px" />
-    <div class="field"><label>キャプション（SNS投稿文）</label>
-      <input id="cap" value="${p.caption.replace(/"/g, "&quot;")}" /></div>
-    <p class="muted" style="font-size:12px;margin:-6px 2px 14px">${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} に撮影</p>
-    <button class="btn teal" id="share">📲 SNSに投稿して宣伝する</button>
-    <button class="btn secondary" id="del" style="margin-top:8px">この写真を削除</button>`);
-
-  $("#share", back).onclick = async () => {
-    const caption = $("#cap", back).value;
-    try {
-      if (navigator.share) {
-        // 画像つき共有（対応端末）
-        const blob = await (await fetch(p.dataUrl)).blob();
-        const file = new File([blob], "miamigo.jpg", { type: "image/jpeg" });
-        const payload = { title: "Mi Amigo", text: caption };
-        if (navigator.canShare && navigator.canShare({ files: [file] })) payload.files = [file];
-        await navigator.share(payload);
-        toast("共有しました！");
-      } else {
-        await navigator.clipboard?.writeText(caption);
-        toast("（プロトタイプ）投稿文をコピーしました");
-      }
-    } catch { /* ユーザーがキャンセル */ }
-  };
-  $("#del", back).onclick = () => {
-    DB.set(K.album, DB.get(K.album, []).filter(x => x.id !== p.id));
-    closeSheet(); toast("削除しました"); render();
-  };
-}
-
-/* ---------- 音声ウォーキングガイド（日英西・TTS） ---------- */
-const LANG_LABEL = { ja: "日本語", en: "English", es: "Español" };
-const LANG_CODE = { ja: "ja-JP", en: "en-US", es: "es-ES" };
-
-function stopSpeak() {
-  try { window.speechSynthesis && speechSynthesis.cancel(); } catch {}
-  State.speakingId = null;
-}
-function speak(text, lang, onend) {
-  if (!("speechSynthesis" in window)) { toast("この端末は音声読み上げに未対応です"); return false; }
-  try {
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = LANG_CODE[lang] || "ja-JP";
-    u.rate = 0.98; u.pitch = 1;
-    u.onend = () => { State.speakingId = null; onend && onend(); };
-    speechSynthesis.speak(u);
-    return true;
-  } catch { return false; }
-}
-
-function viewGuide() {
-  const g = DATA.guide, L = State.lang;
-  const wrap = el(`<div>
-    <div class="topbar">
-      <h1>${g.route.title[L]}</h1>
-      <p class="sub">🎧 歩きながら聴ける音声ガイド</p>
-      <div class="langseg" id="langseg"></div>
-    </div>
-    <div class="pad">
-      <p class="muted" style="font-size:13px;margin:0 0 16px">${g.route.intro[L]}</p>
-      <div class="section-title">街歩きルート（${g.route.stops.length}スポット）</div>
-      <div class="route" id="route"></div>
-      <div class="section-title">歴史を聴く</div>
-      <div id="history"></div>
-      <p class="hint" style="text-align:center;margin-top:18px">※ 現在は端末の音声合成(TTS)で読み上げています。録音音声に差し替え予定。</p>
-    </div>
-  </div>`);
-
-  // 言語切替
-  const seg = $("#langseg", wrap);
-  ["ja", "en", "es"].forEach(code => {
-    const b = el(`<button class="${code === L ? "on" : ""}">${LANG_LABEL[code]}</button>`);
-    b.onclick = () => { stopSpeak(); State.lang = code; localStorage.setItem("ma_lang", code); render(); };
-    seg.appendChild(b);
-  });
-
-  // スポット（ルート）
-  const route = $("#route", wrap);
-  g.route.stops.forEach((s, i) => {
-    const playing = State.speakingId === s.id;
-    const item = el(`<div class="route-item">
-      <div class="route-num">${i + 1}</div>
-      <div class="card" style="flex:1;margin:0 0 14px">
-        <div class="card-body">
-          <div class="row" style="align-items:flex-start">
-            <div class="ava">${s.emoji}</div>
-            <div style="flex:1">
-              <strong>${s.title[L]}</strong>
-              <p class="muted" style="font-size:13px;margin:6px 0 0">${s.text[L]}</p>
-            </div>
-          </div>
-          <button class="btn ${playing ? "secondary" : "teal"} sm" data-id="${s.id}" style="width:100%;margin-top:12px">
-            ${playing ? "■ 停止" : "▶ 再生"}
-          </button>
-        </div>
-      </div>
-    </div>`);
-    $("button", item).onclick = () => {
-      if (State.speakingId === s.id) { stopSpeak(); render(); return; }
-      State.speakingId = s.id;
-      speak(s.text[L], L, () => render());
-      render();
-    };
+/* ---------- 音声ガイド（再生中の文章を前面に表示＋ハイライト） ---------- */
+function viewGuide(){
+  const g=DATA.guide;
+  const wrap=el(`<div><div class="topbar"><h1>${esc(L(g.route.title))}</h1><p class="sub">${t("guide_sub")}</p><div id="gLang"></div></div>
+    <div class="pad"><p class="muted" style="font-size:13px;margin:0 0 16px">${esc(L(g.route.intro))}</p>
+      <div class="section-title">${t("walk_route")}（${g.route.stops.length}）</div><div class="route" id="route"></div>
+      <div class="section-title">${t("listen_history")}</div><div id="history"></div>
+      <p class="hint" style="text-align:center;margin-top:18px">${t("tts_note")}</p></div></div>`);
+  $("#gLang",wrap).appendChild(langSeg(()=>render()));
+  const route=$("#route",wrap);
+  g.route.stops.forEach((s,i)=>{
+    const item=el(`<div class="route-item"><div class="route-num">${i+1}</div>
+      <div class="card" style="flex:1;margin:0 0 14px"><div class="card-body">
+        <div class="row" style="align-items:flex-start"><div class="ava">${s.emoji}</div>
+        <div style="flex:1"><strong>${esc(L(s.title))}</strong><p class="muted" style="font-size:13px;margin:6px 0 0">${esc(L(s.text))}</p></div></div>
+        <button class="btn teal sm" style="width:100%;margin-top:12px">${t("play")}</button></div></div></div>`);
+    $("button",item).onclick=()=>openPlayer(s);
     route.appendChild(item);
   });
-
-  // 歴史を聴く
-  const hist = $("#history", wrap);
-  g.history.forEach(h => {
-    const playing = State.speakingId === h.id;
-    const item = el(`<div class="card"><div class="card-body">
-      <div class="row" style="align-items:flex-start">
-        <div class="ava">${h.emoji}</div>
-        <div style="flex:1">
-          <strong>${h.title[L]}</strong>
-          ${h.sensitive ? `<div style="margin-top:4px"><span class="badge food">⚠️ 取り扱い注意・下書き</span></div>` : ""}
-          <p class="muted" style="font-size:13px;margin:8px 0 0">${h.text[L]}</p>
-        </div>
-      </div>
-      <button class="btn ${playing ? "secondary" : "teal"} sm" data-id="${h.id}" style="width:100%;margin-top:12px">
-        ${playing ? "■ 停止" : "▶ 再生"}
-      </button>
-    </div></div>`);
-    $("button", item).onclick = () => {
-      if (State.speakingId === h.id) { stopSpeak(); render(); return; }
-      State.speakingId = h.id;
-      speak(h.text[L], L, () => render());
-      render();
-    };
+  const hist=$("#history",wrap);
+  g.history.forEach(h=>{
+    const item=el(`<div class="card"><div class="card-body"><div class="row" style="align-items:flex-start"><div class="ava">${h.emoji}</div>
+      <div style="flex:1"><strong>${esc(L(h.title))}</strong>${h.sensitive?`<div style="margin-top:4px"><span class="badge food">⚠️ ${State.lang==="ja"?"取り扱い注意・下書き":"draft"}</span></div>`:""}
+      <p class="muted" style="font-size:13px;margin:8px 0 0">${esc(L(h.text))}</p></div></div>
+      <button class="btn teal sm" style="width:100%;margin-top:12px">${t("play")}</button></div></div>`);
+    $("button",item).onclick=()=>openPlayer(h);
     hist.appendChild(item);
   });
-
   return wrap;
 }
 
-/* ---------- マイページ（予約一覧＋ログアウト） ---------- */
-function viewMyPage() {
-  const resv = DB.get(K.resv, []).filter(r => r.userEmail === State.user.email).sort((a, b) => b.createdAt - a.createdAt);
-  const wrap = el(`<div>
-    <div class="topbar"><h1>マイページ</h1><p class="sub">${State.user.name} さん（${State.user.email}）</p></div>
-    <div class="pad">
-      <div class="section-title">予約一覧</div>
-      <div id="resvList"></div>
-      <button class="btn secondary" id="logout" style="margin-top:24px">ログアウト</button>
-      <p class="hint" style="text-align:center;margin-top:18px">Mi Amigo プロトタイプ v0.1 — Antigua, Guatemala 🌋</p>
-    </div>
+// 再生プレイヤー：読み上げ文を大きく前面に。読み上げ位置をハイライトして自動スクロール。
+function openPlayer(item){
+  const text=L(item.text);
+  // 文単位に分割（日本語の「。」・欧文の .!? と改行）
+  const parts=text.match(/[^。．.!?！？\n]+[。．.!?！？]?/g) || [text];
+  const sentences=parts.map(p=>p.trim()).filter(Boolean);
+  let offs=[]; { let pos=0; sentences.forEach(s=>{ const idx=text.indexOf(s,pos); offs.push(idx<0?pos:idx); pos=(idx<0?pos:idx)+s.length; }); }
+  const spans=sentences.map((s,i)=>`<span class="sent" data-i="${i}">${esc(s)} </span>`).join("");
+  const back=openSheet(`<div class="player">
+    <div class="row" style="align-items:center"><div class="ava" style="font-size:26px">${item.emoji}</div><h2 style="margin:0 0 0 6px;flex:1">${esc(L(item.title))}</h2></div>
+    <div class="player-text" id="ptext">${spans}</div>
+    <div class="player-ctl"><button class="btn teal" id="pToggle">${t("stop")}</button><button class="btn secondary" id="pClose">${t("close")}</button></div>
   </div>`);
-  const list = $("#resvList", wrap);
-  if (!resv.length) {
-    list.appendChild(el(`<p class="muted" style="padding:8px 2px">まだ予約はありません。「探す」から予約してみましょう。</p>`));
-  } else {
-    resv.forEach(r => {
-      const [y, m, d] = r.dateKey.split("-").map(Number);
-      list.appendChild(el(`<div class="list-item">
-        <div class="ava">${r.emoji}</div>
-        <div style="flex:1"><strong>${r.title}</strong>
-          <div class="muted" style="font-size:12px;margin-top:2px">${y}/${m + 1}/${d}・${r.qty}名・${fmtUSD(r.total)}</div></div>
-        <span class="badge stay">確定</span>
-      </div>`));
-    });
+  const textBox=$("#ptext",back); const spanEls=[...textBox.querySelectorAll(".sent")];
+  const highlight=(i)=>{ spanEls.forEach((e,j)=>e.classList.toggle("active",j===i)); const a=spanEls[i]; if(a) a.scrollIntoView({block:"center",behavior:"smooth"}); };
+  const sentenceForChar=(ci)=>{ let idx=0; for(let i=0;i<offs.length;i++){ if(ci>=offs[i]) idx=i; else break; } return idx; };
+  let toggled=true;
+  function start(){
+    if(!("speechSynthesis" in window)){ toast(t("no_tts")); highlight(0); return; }
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text); u.lang=LANG_CODE[State.lang]||"ja-JP"; u.rate=0.97;
+    State.speakingId=item.id; highlight(0);
+    u.onboundary=(e)=>{ if(e.charIndex!=null) highlight(sentenceForChar(e.charIndex)); };
+    u.onend=()=>{ State.speakingId=null; toggled=false; const b=$("#pToggle",back); if(b) b.textContent=t("replay"); spanEls.forEach(e=>e.classList.remove("active")); };
+    speechSynthesis.speak(u);
   }
-  $("#logout", wrap).onclick = () => { Auth.logout(); State.user = null; render(); };
+  $("#pToggle",back).onclick=()=>{ if(toggled){ stopSpeak(); toggled=false; $("#pToggle",back).textContent=t("replay"); spanEls.forEach(e=>e.classList.remove("active")); } else { toggled=true; $("#pToggle",back).textContent=t("stop"); start(); } };
+  $("#pClose",back).onclick=()=>{ stopSpeak(); closeSheet(); };
+  back.addEventListener("click",e=>{ if(e.target===back) stopSpeak(); });
+  start();
+}
+
+/* ---------- マップ（GPS＋Googleマップ） ---------- */
+function gmapsDir(lat,lng){ const o=State.geo?`&origin=${State.geo.lat},${State.geo.lng}`:""; return `https://www.google.com/maps/dir/?api=1${o}&destination=${lat},${lng}`; }
+function gmapsView(lat,lng,label){ return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`; }
+function distKm(a,b){ const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180,la=a.lat*Math.PI/180,lb=b.lat*Math.PI/180; const x=Math.sin(dLat/2)**2+Math.cos(la)*Math.cos(lb)*Math.sin(dLng/2)**2; return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x)); }
+function viewMap(){
+  const stops=DATA.guide.route.stops;
+  // ルート全体の埋め込み（複数ピンは無料埋め込みでは中心＋検索のみ→代表点で表示）
+  const center=stops[0];
+  const embed=`https://maps.google.com/maps?q=${center.lat},${center.lng}&z=15&output=embed`;
+  const wrap=el(`<div><div class="topbar"><h1>${t("tab_map")}</h1><p class="sub">${t("map_sub")}</p></div>
+    <div class="pad">
+      <div class="mapbox"><iframe src="${embed}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+      <a class="btn secondary" href="${gmapsView(center.lat,center.lng)}" target="_blank" rel="noopener" style="margin:12px 0">${t("all_route")}</a>
+      <button class="btn gold" id="geoBtn">${t("enable_loc")}</button>
+      <div id="spotList" style="margin-top:10px"></div>
+    </div></div>`);
+  const render2=()=>{
+    let list=stops.map((s,i)=>({s,i}));
+    if(State.geo) list.sort((a,b)=>distKm(State.geo,a.s)-distKm(State.geo,b.s));
+    const box=$("#spotList",wrap); box.innerHTML="";
+    list.forEach(({s,i})=>{
+      const dist=State.geo?`<span class="badge stay">${t("away")}${distKm(State.geo,s).toFixed(distKm(State.geo,s)<10?1:0)} ${t("km_away")}</span>`:"";
+      const item=el(`<div class="list-item"><div class="ava">${s.emoji}</div>
+        <div style="flex:1"><strong>${i+1}. ${esc(L(s.title))}</strong> ${dist}
+          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+            <a class="btn sm teal" href="${gmapsDir(s.lat,s.lng)}" target="_blank" rel="noopener">${t("go_here")}</a>
+            <a class="btn sm secondary" href="${gmapsView(s.lat,s.lng)}" target="_blank" rel="noopener">${t("open_map")}</a>
+          </div></div></div>`);
+      box.appendChild(item);
+    });
+  };
+  $("#geoBtn",wrap).onclick=()=>{ const b=$("#geoBtn",wrap); if(!navigator.geolocation){ toast(t("loc_fail")); return; } b.textContent=t("locating"); b.disabled=true;
+    navigator.geolocation.getCurrentPosition(p=>{ State.geo={lat:p.coords.latitude,lng:p.coords.longitude}; b.textContent="📍 "+(State.lang==="ja"?"現在地ON（近い順）":State.lang==="es"?"Ubicación activa":"Located"); render2(); },
+      ()=>{ toast(t("loc_fail")); b.textContent=t("enable_loc"); b.disabled=false; }, {enableHighAccuracy:true,timeout:8000}); };
+  render2();
+  return wrap;
+}
+
+/* ---------- アルバム＋5プラットフォーム共有 ---------- */
+function viewAlbum(){
+  const photos=DB.get(K.album,[]).filter(p=>p.userEmail===State.user.email);
+  const wrap=el(`<div><div class="topbar"><h1>${t("tab_album")}</h1><p class="sub">${t("album_sub")}</p></div><div class="pad" id="ab"></div></div>`);
+  const body=$("#ab",wrap);
+  if(!photos.length){ const es=el(`<div class="empty-state"><div class="big">📸</div><p>${t("album_empty")}</p><button class="btn" id="gq" style="max-width:220px;margin:8px auto 0">${t("go_quest")}</button></div>`); $("#gq",es).onclick=()=>{State.view="quest";render();}; body.appendChild(es); return wrap; }
+  const grid=el(`<div class="album-grid"></div>`); photos.forEach(p=>{ const img=el(`<img class="ph" src="${p.dataUrl}" alt="${esc(p.place)}" />`); img.onclick=()=>openPhoto(p); grid.appendChild(img); }); body.appendChild(grid);
+  return wrap;
+}
+
+const PLATFORMS=[
+  { key:"instagram", label:"Instagram", emoji:"📷", bg:"#E1306C" },
+  { key:"facebook",  label:"Facebook",  emoji:"👍", bg:"#1877F2" },
+  { key:"x",         label:"X",         emoji:"✖️", bg:"#000000" },
+  { key:"tiktok",    label:"TikTok",    emoji:"🎵", bg:"#111111" },
+  { key:"whatsapp",  label:"WhatsApp",  emoji:"💬", bg:"#25D366" },
+];
+async function shareToPlatform(plat, caption, photo){
+  const url=location.origin+location.pathname;
+  const txt=encodeURIComponent(caption+"\n"+url);
+  const open=(u)=>window.open(u,"_blank","noopener");
+  if(plat==="x") return open(`https://twitter.com/intent/tweet?text=${txt}`);
+  if(plat==="facebook") return open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(caption)}`);
+  if(plat==="whatsapp") return open(`https://wa.me/?text=${txt}`);
+  // Instagram / TikTok は Web投稿APIが無い → 写真つきネイティブ共有を試し、無ければキャプションをコピーしてアプリを開く
+  try{
+    if(navigator.share){ const blob=await (await fetch(photo.dataUrl)).blob(); const file=new File([blob],"miamigo.jpg",{type:"image/jpeg"});
+      if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({text:caption,files:[file]}); return; } }
+  }catch{}
+  try{ await navigator.clipboard?.writeText(caption); }catch{}
+  toast(t("copied"));
+  open(plat==="instagram"?"https://www.instagram.com/":"https://www.tiktok.com/upload");
+}
+function openPhoto(p){
+  const d=new Date(p.createdAt);
+  const platBtns=PLATFORMS.map(pl=>`<button class="plat" data-k="${pl.key}" style="background:${pl.bg}"><span>${pl.emoji}</span><span>${pl.label}</span></button>`).join("");
+  const back=openSheet(`<h2>📸 ${esc(p.place)}</h2>
+    <img src="${p.dataUrl}" style="width:100%;border-radius:16px;margin-bottom:12px" />
+    <div class="field"><label>${t("caption")}</label><input id="cap" value="${esc(p.caption)}" /></div>
+    <p class="muted" style="font-size:12px;margin:-6px 2px 12px">${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${t("taken")}</p>
+    <div class="section-title" style="margin-top:0">${t("share_to")}</div>
+    <div class="plat-grid">${platBtns}</div>
+    <button class="btn secondary" id="save" style="margin-top:14px">${t("save_photo")}</button>
+    <button class="btn ghost" id="other" style="margin-top:8px">${t("other_share")}</button>
+    <button class="btn ghost" id="del" style="margin-top:4px;color:var(--danger)">${t("delete_photo")}</button>`);
+  back.querySelectorAll(".plat").forEach(b=>b.onclick=()=>shareToPlatform(b.dataset.k, $("#cap",back).value, p));
+  $("#save",back).onclick=()=>{ const a=document.createElement("a"); a.href=p.dataUrl; a.download=`miamigo_${p.spotId||"photo"}.jpg`; a.click(); };
+  $("#other",back).onclick=async()=>{ try{ if(navigator.share){ const blob=await (await fetch(p.dataUrl)).blob(); const file=new File([blob],"miamigo.jpg",{type:"image/jpeg"}); const pl={text:$("#cap",back).value}; if(navigator.canShare&&navigator.canShare({files:[file]})) pl.files=[file]; await navigator.share(pl); toast(t("shared")); } else { await navigator.clipboard?.writeText($("#cap",back).value); toast(t("copied")); } }catch{} };
+  $("#del",back).onclick=()=>{ DB.set(K.album, DB.get(K.album,[]).filter(x=>x.id!==p.id)); closeSheet(); toast(t("deleted")); render(); };
+}
+
+/* ---------- マイページ（言語変更＋予約一覧） ---------- */
+function viewMyPage(){
+  const resv=DB.get(K.resv,[]).filter(r=>r.userEmail===State.user.email).sort((a,b)=>b.createdAt-a.createdAt);
+  const wrap=el(`<div><div class="topbar"><h1>${t("tab_mypage")}</h1><p class="sub">${esc(State.user.name)}（${esc(State.user.email)}）</p></div>
+    <div class="pad">
+      <div class="section-title">${t("language")}</div><div id="myLang"></div>
+      <div class="section-title">${t("reservations")}</div><div id="rl"></div>
+      <button class="btn secondary" id="logout" style="margin-top:24px">${t("logout")}</button>
+      <p class="hint" style="text-align:center;margin-top:18px">${t("proto_ver")}</p></div></div>`);
+  $("#myLang",wrap).appendChild(langSeg(()=>render()));
+  const list=$("#rl",wrap);
+  if(!resv.length){ list.appendChild(el(`<p class="muted" style="padding:8px 2px">${t("no_resv")}</p>`)); }
+  else resv.forEach(r=>{ const [y,mo,d]=r.dateKey.split("-").map(Number); list.appendChild(el(`<div class="list-item"><div class="ava">${r.emoji}</div><div style="flex:1"><strong>${esc(r.title)}</strong><div class="muted" style="font-size:12px;margin-top:2px">${y}/${mo+1}/${d}・${r.qty}・${fmtUSD(r.total)}</div></div><span class="badge stay">${t("confirmed")}</span></div>`)); });
+  $("#logout",wrap).onclick=()=>{ Auth.logout(); State.user=null; render(); };
   return wrap;
 }
 
 /* ---------- 起動 ---------- */
-document.querySelectorAll("#tabbar .tab").forEach(t => {
-  t.onclick = () => { stopSpeak(); State.view = t.dataset.view; render(); };
-});
-State.user = Auth.current();
+document.querySelectorAll("#tabbar .tab").forEach(tb=>{ tb.onclick=()=>{ stopSpeak(); State.view=tb.dataset.view; render(); }; });
+State.user=Auth.current();
 render();

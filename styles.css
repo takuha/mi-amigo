@@ -182,3 +182,28 @@ html, body {
   content:""; position:absolute; top:34px; bottom:-14px; width:2px; left:50%;
   transform:translateX(-50%); background:var(--line);
 }
+
+/* 言語ラベル */
+.field-label{ display:block; font-size:13px; font-weight:700; margin-bottom:8px; color:#5b4f45; }
+
+/* 6タブ用に少し詰める */
+.tabbar .tab{ font-size:10px; }
+.tabbar .tab .tab-ico{ font-size:19px; }
+
+/* 再生プレイヤー（読み上げ文を前面に） */
+.player h2{ font-size:18px; }
+.player-text{ margin:16px 0; max-height:340px; overflow-y:auto; font-size:21px; line-height:2; color:#9a8d80; padding:4px 2px; }
+.player-text .sent{ transition:color .2s, background .2s; border-radius:6px; }
+.player-text .sent.active{ color:var(--ink); font-weight:800; background:#fbeccb; box-shadow:0 0 0 4px #fbeccb; }
+.player-ctl{ display:flex; gap:10px; }
+.player-ctl .btn{ flex:1; }
+
+/* マップ */
+.mapbox{ width:100%; height:230px; border-radius:16px; overflow:hidden; border:1px solid var(--line); background:#eee; }
+.mapbox iframe{ width:100%; height:100%; border:0; display:block; }
+
+/* 5プラットフォーム投稿 */
+.plat-grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+.plat{ border:none; cursor:pointer; color:#fff; border-radius:14px; padding:12px 4px; display:flex; flex-direction:column; align-items:center; gap:5px; font-size:10px; font-weight:700; }
+.plat span:first-child{ font-size:22px; }
+.plat:active{ transform:scale(.96); }
