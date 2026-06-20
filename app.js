@@ -32,6 +32,7 @@ const State = {
   speakingId:null,
   geo:null, // 現在地 {lat,lng}
   chatGroup:null, // 開いているグループid
+  business:false, // 企業向け広告ページ表示中
 };
 
 /* ---------- プロフィール ---------- */
@@ -117,6 +118,22 @@ Object.assign(I18N.en,{ phone:"Phone number", phone_ph:"Phone (no dashes)", send
 Object.assign(I18N.es,{ phone:"Número de teléfono", phone_ph:"Teléfono (sin guiones)", send_code:"Enviar código", code:"Código de verificación", code_ph:"Código de 6 dígitos", verify:"Verificar y continuar", nick_new:"Nombre / Apodo (nuevos)", demo_code:"Código demo", sms_note:"Demo: el SMS real necesita un backend (Firebase/Twilio). El código se muestra en pantalla.", code_sent:"Código enviado", err_phone:"Ingresa tu número", err_code:"Código incorrecto" });
 const DIAL={ JP:"+81",GT:"+502",US:"+1",CA:"+1",MX:"+52",ES:"+34",FR:"+33",DE:"+49",GB:"+44",IT:"+39",NL:"+31",CH:"+41",PT:"+351",IE:"+353",SE:"+46",NO:"+47",AU:"+61",NZ:"+64",BR:"+55",AR:"+54",CL:"+56",CO:"+57",PE:"+51",CR:"+506",SV:"+503",HN:"+504",NI:"+505",BZ:"+501",KR:"+82",CN:"+86",TW:"+886",TH:"+66",IN:"+91",IL:"+972",ZA:"+27",PL:"+48" };
 
+// 連絡先（広告掲載の問い合わせ受信先。必要に応じて専用アドレスに変更可）
+const BIZ_EMAIL="takuha1988@gmail.com";
+// 追加i18n（企業向け広告掲載・スポンサー）
+Object.assign(I18N.ja,{ pr:"PR", biz_open:"🏢 企業の方へ（広告掲載）", biz_title:"企業の方へ｜広告掲載", biz_hero:"アンティグアを歩く旅行者に、ピンポイントで届く。",
+  biz_audience:"届く相手", biz_a1:"電話番号認証済みのリアルな会員", biz_a2:"出身国・年齢・性別・興味でターゲティング可能", biz_a3:"アンティグア来訪中＝“今まさに使う”消費意欲の高い層",
+  biz_products:"広告メニュー", biz_p1:"スポンサー掲載（「探す」上位・PR表示）", biz_p2:"バナー広告", biz_p3:"スポンサー謎解きスポット（御社店舗を謎解きに）", biz_p4:"ターゲット・プッシュ通知（本番）",
+  biz_members:"現在の登録会員（デモ）", biz_people:"人", biz_inquiry:"広告掲載のお問い合わせ", biz_company:"会社名", biz_person:"ご担当者名", biz_contact:"連絡先（メール/電話）", biz_budget:"ご予算感（任意）", biz_message:"メッセージ", biz_send:"送信する", biz_sent:"メールアプリでお問い合わせを作成しました", biz_note:"このページのURLを企業に送れます。お問い合わせはメールで届きます。", biz_back:"アプリに戻る" });
+Object.assign(I18N.en,{ pr:"AD", biz_open:"🏢 For businesses (advertise)", biz_title:"For Businesses · Advertise", biz_hero:"Reach travelers walking Antigua, right when it matters.",
+  biz_audience:"Who you reach", biz_a1:"Real, phone-verified members", biz_a2:"Target by country, age, gender, interests", biz_a3:"Visitors in Antigua now — high intent to spend",
+  biz_products:"Ad menu", biz_p1:"Sponsored listing (top of Explore, AD label)", biz_p2:"Banner ads", biz_p3:"Sponsored rally spot (your venue in the rally)", biz_p4:"Targeted push notifications (production)",
+  biz_members:"Members now (demo)", biz_people:"", biz_inquiry:"Advertising inquiry", biz_company:"Company", biz_person:"Contact name", biz_contact:"Contact (email/phone)", biz_budget:"Budget (optional)", biz_message:"Message", biz_send:"Send", biz_sent:"Inquiry opened in your mail app", biz_note:"Share this page's URL with companies. Inquiries arrive by email.", biz_back:"Back to app" });
+Object.assign(I18N.es,{ pr:"AD", biz_open:"🏢 Para empresas (publicidad)", biz_title:"Para Empresas · Publicidad", biz_hero:"Llega a los viajeros que caminan Antigua, justo cuando importa.",
+  biz_audience:"A quién llegas", biz_a1:"Miembros reales verificados por teléfono", biz_a2:"Segmenta por país, edad, género, intereses", biz_a3:"Visitantes en Antigua ahora — alta intención de gasto",
+  biz_products:"Menú de anuncios", biz_p1:"Anuncio patrocinado (arriba en Explorar, etiqueta AD)", biz_p2:"Banners", biz_p3:"Parada patrocinada del rally (tu negocio en el rally)", biz_p4:"Notificaciones push segmentadas (producción)",
+  biz_members:"Miembros ahora (demo)", biz_people:"", biz_inquiry:"Consulta de publicidad", biz_company:"Empresa", biz_person:"Nombre de contacto", biz_contact:"Contacto (correo/teléfono)", biz_budget:"Presupuesto (opcional)", biz_message:"Mensaje", biz_send:"Enviar", biz_sent:"Consulta abierta en tu correo", biz_note:"Comparte la URL de esta página con empresas. Las consultas llegan por correo.", biz_back:"Volver a la app" });
+
 function t(key){ const L=State.lang; return (I18N[L] && I18N[L][key]) || I18N.ja[key] || key; }
 function country(code){ return (DATA.countries||[]).find(c=>c.c===code); }
 function countryName(code){ const c=country(code); return c?(c[State.lang]||c.en):""; }
@@ -155,6 +172,8 @@ function render(){
   const screen=$("#screen"), tabbar=$("#tabbar");
   // タブ名を言語反映
   tabbar.querySelectorAll(".tab").forEach(tb=>{ const lab=tb.querySelector(".tab-label"); if(lab) lab.textContent=t("tab_"+tb.dataset.view); });
+  // 企業向け広告ページ（未ログインでも閲覧可。URLに #business でも開ける）
+  if(State.business){ tabbar.classList.add("hidden"); screen.innerHTML=""; screen.appendChild(viewBusiness()); screen.scrollTop=0; return; }
   if(!State.user){ tabbar.classList.add("hidden"); screen.innerHTML=""; screen.appendChild(viewAuth()); return; }
   tabbar.classList.remove("hidden");
   tabbar.querySelectorAll(".tab").forEach(tb=>tb.classList.toggle("active", tb.dataset.view===State.view));
@@ -222,6 +241,17 @@ function viewDiscover(){
   const wrap=el(`<div><div class="topbar"><h1>${t("tab_discover")}</h1><p class="sub">${t("discover_sub")}</p></div><div class="pad" id="listings"></div></div>`);
   const labels={ exp:["exp",{ja:"体験",en:"Experience",es:"Experiencia"}], food:["food",{ja:"飲食",en:"Food",es:"Comida"}], stay:["stay",{ja:"宿",en:"Stay",es:"Hospedaje"}] };
   const root=$("#listings",wrap);
+  // スポンサー枠（デモ）— 広告主の体験がここに表示される
+  const spon=el(`<div class="card">
+    <div class="thumb" style="background:linear-gradient(135deg,#1d7a73,#145c57);color:#fff;font-size:46px">🌋</div>
+    <div class="card-body">
+      <span class="badge" style="background:#2a211c;color:#fff">${t("pr")}</span>
+      <h3 style="margin:8px 0 4px;font-size:17px">Volcán Acatenango — ${({ja:"日の出トレック",en:"Sunrise Trek",es:"Trek al amanecer"})[State.lang]}</h3>
+      <p class="muted" style="margin:0 0 10px;font-size:13px">${({ja:"火山の夜明けを見る1泊トレック（提携ツアー枠）",en:"Overnight trek to a volcano sunrise (partner ad slot)",es:"Trek nocturno al amanecer del volcán (espacio de socio)"})[State.lang]}</p>
+      <button class="btn sm teal" id="sponsorBtn">${t("book")}</button>
+    </div></div>`);
+  $("#sponsorBtn",spon).onclick=()=>toast("（デモ）"+t("pr")+": "+t("biz_p1"));
+  root.appendChild(spon);
   DATA.listings.forEach(l=>{
     const [cls,jp]=labels[l.type]||labels.exp;
     const card=el(`<div class="card">
@@ -622,6 +652,53 @@ function openPhoto(p){
   $("#del",back).onclick=()=>{ DB.set(K.album, DB.get(K.album,[]).filter(x=>x.id!==p.id)); closeSheet(); toast(t("deleted")); render(); };
 }
 
+/* ---------- 企業向け：広告掲載ページ（広告主を募る） ---------- */
+function viewBusiness(){
+  const members=Object.keys(DB.get(K.users,{})).length;
+  const langPick=el(`<div></div>`); langPick.appendChild(langSeg(()=>render()));
+  const products=[ "biz_p1","biz_p2","biz_p3","biz_p4" ].map(k=>`<li>${t(k)}</li>`).join("");
+  const wrap=el(`<div>
+    <div class="auth-hero" style="height:auto;min-height:170px;padding:20px 24px 22px">
+      <h1 style="font-size:30px">${t("biz_title")}</h1>
+      <p style="font-size:15px;margin-top:8px">${t("biz_hero")}</p>
+    </div>
+    <div class="weave"></div>
+    <div class="pad">
+      <div id="bizLang" style="margin-bottom:6px"></div>
+      <div class="card" style="background:#f3ece0;border:none"><div class="card-body" style="text-align:center">
+        <div class="muted" style="font-size:13px">${t("biz_members")}</div>
+        <div style="font-size:40px;font-weight:900;color:var(--terra)">${members.toLocaleString()}<span style="font-size:18px"> ${t("biz_people")}</span></div>
+      </div></div>
+
+      <div class="section-title">${t("biz_audience")}</div>
+      <div class="card"><div class="card-body"><ul class="clean2">
+        <li>📱 ${t("biz_a1")}</li><li>🎯 ${t("biz_a2")}</li><li>🔥 ${t("biz_a3")}</li></ul></div></div>
+
+      <div class="section-title">${t("biz_products")}</div>
+      <div class="card"><div class="card-body"><ul class="clean2">${products}</ul></div></div>
+
+      <div class="section-title">${t("biz_inquiry")}</div>
+      <div class="field"><label>${t("biz_company")}</label><input id="bC" /></div>
+      <div class="field"><label>${t("biz_person")}</label><input id="bP" /></div>
+      <div class="field"><label>${t("biz_contact")}</label><input id="bM" /></div>
+      <div class="field"><label>${t("biz_budget")}</label><input id="bB" /></div>
+      <div class="field"><label>${t("biz_message")}</label><input id="bMsg" /></div>
+      <button class="btn" id="bSend">${t("biz_send")}</button>
+      <p class="hint" style="margin-top:12px">${t("biz_note")}</p>
+      <button class="btn ghost" id="bBack" style="margin-top:10px">${t("biz_back")}</button>
+    </div></div>`);
+  $("#bizLang",wrap).appendChild(langSeg(()=>render()));
+  $("#bSend",wrap).onclick=()=>{
+    const company=$("#bC",wrap).value, person=$("#bP",wrap).value, contact=$("#bM",wrap).value, budget=$("#bB",wrap).value, msg=$("#bMsg",wrap).value;
+    const subject=encodeURIComponent(`[Mi Amigo 広告掲載] ${company||""}`);
+    const bodyTxt=`${t("biz_company")}: ${company}\n${t("biz_person")}: ${person}\n${t("biz_contact")}: ${contact}\n${t("biz_budget")}: ${budget}\n${t("biz_message")}: ${msg}\n\n— Mi Amigo (${location.origin+location.pathname})`;
+    window.location.href=`mailto:${BIZ_EMAIL}?subject=${subject}&body=${encodeURIComponent(bodyTxt)}`;
+    toast(t("biz_sent"));
+  };
+  $("#bBack",wrap).onclick=()=>{ State.business=false; if(location.hash) history.replaceState(null,"",location.pathname); render(); };
+  return wrap;
+}
+
 /* ---------- マイページ（言語変更＋予約一覧） ---------- */
 function viewMyPage(){
   const resv=DB.get(K.resv,[]).filter(r=>r.userEmail===State.user.email).sort((a,b)=>b.createdAt-a.createdAt);
@@ -639,10 +716,12 @@ function viewMyPage(){
       </div></div>
       <div class="section-title">${t("language")}</div><div id="myLang"></div>
       <div class="section-title">${t("reservations")}</div><div id="rl"></div>
-      <button class="btn secondary" id="logout" style="margin-top:24px">${t("logout")}</button>
+      <button class="btn ghost" id="bizOpen" style="margin-top:16px">${t("biz_open")}</button>
+      <button class="btn secondary" id="logout" style="margin-top:8px">${t("logout")}</button>
       <p class="hint" style="text-align:center;margin-top:18px">${t("proto_ver")}</p></div></div>`);
   $("#editProfile",wrap).onclick=openProfile;
   $("#makeCard",wrap).onclick=openAmigoCard;
+  $("#bizOpen",wrap).onclick=()=>{ State.business=true; render(); };
   $("#myLang",wrap).appendChild(langSeg(()=>render()));
   const list=$("#rl",wrap);
   if(!resv.length){ list.appendChild(el(`<p class="muted" style="padding:8px 2px">${t("no_resv")}</p>`)); }
@@ -654,4 +733,6 @@ function viewMyPage(){
 /* ---------- 起動 ---------- */
 document.querySelectorAll("#tabbar .tab").forEach(tb=>{ tb.onclick=()=>{ stopSpeak(); State.chatGroup=null; State.view=tb.dataset.view; render(); }; });
 State.user=Auth.current();
+// URLに #business / #ads があれば企業向け広告ページを表示（企業に直接リンクを送れる）
+if(/^#(business|ads)$/.test(location.hash)) State.business=true;
 render();
