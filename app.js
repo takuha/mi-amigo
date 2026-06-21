@@ -12,7 +12,7 @@ const DB = {
   get(k, def){ try{ return JSON.parse(localStorage.getItem(k)) ?? def; }catch{ return def; } },
   set(k, v){ localStorage.setItem(k, JSON.stringify(v)); },
 };
-const K = { users:"ma_users", session:"ma_session", resv:"ma_reservations", album:"ma_album", stamps:"ma_stamps", lang:"ma_lang", chat:"ma_chat", groups:"ma_groups" };
+const K = { users:"ma_users", session:"ma_session", resv:"ma_reservations", album:"ma_album", stamps:"ma_stamps", lang:"ma_lang", chat:"ma_chat", groups:"ma_groups", org:"ma_org", ref:"ma_pending_ref" };
 
 /* ---------- 認証 ---------- */
 async function sha256(s){ const b=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
@@ -23,6 +23,75 @@ const Auth = {
   logout(){ localStorage.removeItem(K.session); },
   current(){ const e=DB.get(K.session,null); return e ? DB.get(K.users,{})[e]||null : null; },
 };
+
+/* ---------- 組織（オートバイナリー＋紹介コード） ----------
+ * 最初に登録した人 = 会員番号1番 = ルート（権限あり/admin）。
+ * 以降は紹介コード(?ref)の持ち主の配下へ left→right で自動配置（オートバイナリー）。
+ * introKey=紹介ライン(ユニレベル) / parentKey+position=配置(バイナリー)。
+ * ※ データは localStorage（この端末内）。複数端末をまたぐ本番組織には
+ *   binary_tree_system の API バックエンドをホストして接続する（下の ORG_API 参照）。 */
+const Org = {
+  meta(){ return DB.get(K.org, {seq:0, rootKey:null, codeIndex:{}}); },
+  saveMeta(m){ DB.set(K.org, m); },
+  users(){ return DB.get(K.users,{}); },
+  rec(key){ return this.users()[key]||null; },
+  byCode(code){ const m=this.meta(); const k=m.codeIndex[(code||"").trim().toUpperCase()]; return k?this.rec(k):null; },
+  count(){ return Object.values(this.users()).filter(u=>u.member_id).length; },
+  children(key){ const o={}; for(const u of Object.values(this.users())){ if(u.parentKey===key && u.position) o[u.position]=u.email; } return o; },
+  introducees(key){ return Object.values(this.users()).filter(u=>u.introKey===key).sort((a,b)=>a.member_id-b.member_id).map(u=>u.email); },
+  genCode(vanity){
+    const m=this.meta();
+    if(vanity){ const v=(vanity||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,8); if(v && !m.codeIndex[v]) return v; }
+    const AB="ABCDEFGHJKMNPQRSTUVWXYZ23456789"; let c;
+    do{ c="AMG-"+Array.from({length:6},()=>AB[Math.floor(Math.random()*AB.length)]).join(""); }while(m.codeIndex[c]);
+    return c;
+  },
+  place(introKey){ // 紹介者配下を BFS して left→right の空き枠を返す（スピルオーバー）
+    if(!introKey) return {parentKey:null, position:null};
+    const q=[introKey];
+    while(q.length){ const node=q.shift(); const ch=this.children(node);
+      if(!ch.left) return {parentKey:node, position:"left"};
+      if(!ch.right) return {parentKey:node, position:"right"};
+      q.push(ch.left); q.push(ch.right); }
+    return {parentKey:introKey, position:"left"};
+  },
+  onRegister(key, name, refCode){ // 新規登録時に組織フィールドを付与
+    const all=this.users(); const u=all[key]; if(!u) return null;
+    if(u.member_id) return u; // 既に組織化済み
+    const m=this.meta();
+    let introKey=null, parentKey=null, position=null;
+    if(!m.rootKey){ m.rootKey=key; u.role="admin"; }            // 1番＝ルート＝権限あり
+    else {
+      const intro = refCode ? this.byCode(refCode) : this.rec(m.rootKey);
+      introKey = intro ? intro.email : m.rootKey;
+      const slot=this.place(introKey); parentKey=slot.parentKey; position=slot.position; u.role="member";
+    }
+    m.seq=(m.seq||0)+1; u.member_id=m.seq;
+    u.introKey=introKey; u.parentKey=parentKey; u.position=position;
+    u.refCode=this.genCode(u.member_id===1 ? (name||"") : ""); // 1番だけ名前ベースの覚えやすいコード
+    m.codeIndex[u.refCode]=key;
+    all[key]=u; DB.set(K.users,all); this.saveMeta(m);
+    return u;
+  },
+  refUrl(code){ return location.origin+location.pathname+"?ref="+encodeURIComponent(code); },
+  binaryTree(){ const m=this.meta(); if(!m.rootKey) return null; const self=this;
+    const node=k=>{ const u=self.rec(k); const ch=self.children(k);
+      return {name:u.name, member_id:u.member_id, role:u.role, left:ch.left?node(ch.left):null, right:ch.right?node(ch.right):null}; };
+    return node(m.rootKey); },
+  unilevelTree(){ const m=this.meta(); if(!m.rootKey) return null; const self=this;
+    const node=k=>{ const u=self.rec(k);
+      return {name:u.name, member_id:u.member_id, role:u.role, kids:self.introducees(k).map(node)}; };
+    return node(m.rootKey); },
+};
+
+/* 紹介まわりの簡易多言語 */
+const ORG_I18N = {
+  ja:{ your_no:"あなたの会員番号", your_code:"あなたの紹介コード", invite_title:"友だちを招待", invite_sub:"このコード/URLから登録した人があなたの組織に入ります", copy:"コピー", copied:"コピーしました", share:"共有", org_chart:"組織図", members:"会員数", binary:"バイナリー（配置）", unilevel:"ユニレベル（紹介）", welcome_code:"あなたの紹介コードができました！", introduced_by:"紹介者", joined_via:"招待コードで登録します" },
+  en:{ your_no:"Your member no.", your_code:"Your referral code", invite_title:"Invite friends", invite_sub:"People who join via this code/URL enter your organization", copy:"Copy", copied:"Copied", share:"Share", org_chart:"Org chart", members:"Members", binary:"Binary (placement)", unilevel:"Unilevel (referral)", introduced_by:"Referred by", welcome_code:"Your referral code is ready!", joined_via:"Joining with an invite code" },
+  es:{ your_no:"Tu nº de miembro", your_code:"Tu código de invitación", invite_title:"Invita a amigos", invite_sub:"Quien se una con este código/URL entra en tu organización", copy:"Copiar", copied:"Copiado", share:"Compartir", org_chart:"Organigrama", members:"Miembros", binary:"Binario (colocación)", unilevel:"Unilevel (referidos)", introduced_by:"Invitado por", welcome_code:"¡Tu código de invitación está listo!", joined_via:"Te registras con un código" },
+};
+function orgT(k){ return (ORG_I18N[State.lang]||ORG_I18N.ja)[k] || ORG_I18N.ja[k] || k; }
+function copyText(s){ if(navigator.clipboard){ navigator.clipboard.writeText(s).then(()=>toast(orgT("copied"))).catch(()=>toast(s)); } else toast(s); }
 
 /* ---------- 状態 ---------- */
 const State = {
@@ -205,7 +274,11 @@ function viewAuth(){
   $("#authLang",wrap).appendChild(langSeg(()=>render()));
   const body=$("#authBody",wrap);
   function renderPhone(){
+    const refBanner = State.pendingRef
+      ? `<div class="card" style="background:#e1f5ee;border:none;margin-bottom:12px"><div class="card-body" style="padding:10px 12px">🎟️ ${orgT("joined_via")}：<b style="color:var(--teal)">${esc(State.pendingRef)}</b></div></div>`
+      : "";
     body.innerHTML=`
+      ${refBanner}
       <div class="field"><label>${t("phone")}</label>
         <div class="row" style="gap:8px"><select id="dial" style="width:135px">${dialOpts}</select><input id="phone" type="tel" inputmode="tel" style="flex:1" placeholder="${t("phone_ph")}" /></div></div>
       <div class="field"><label>${t("nick_new")}</label><input id="nick" placeholder="Taku" /></div>
@@ -227,9 +300,12 @@ function viewAuth(){
       <button class="btn ghost" id="backBtn" style="margin-top:8px">${t("back")}</button>`;
     $("#code",body).value=sentCode; // デモ：自動入力
     $("#verifyBtn",body).onclick=()=>{ if($("#code",body).value.trim()!==sentCode){ $("#aErr",body).textContent=t("err_code"); return; }
-      const all=DB.get(K.users,{}); let u=all[pendingKey];
-      if(!u){ u={ id:pendingKey, email:pendingKey, phone:pendingDisplay, name:(pendingNick.trim()||pendingDisplay) }; all[pendingKey]=u; DB.set(K.users,all); }
-      DB.set(K.session,pendingKey); State.user=u; State.view="discover"; toast(`${t("welcome")}, ${u.name}!`); render(); };
+      const all=DB.get(K.users,{}); let u=all[pendingKey]; const isNew=!u;
+      if(isNew){ u={ id:pendingKey, email:pendingKey, phone:pendingDisplay, name:(pendingNick.trim()||pendingDisplay) }; all[pendingKey]=u; DB.set(K.users,all); }
+      DB.set(K.session,pendingKey); State.user=u;
+      if(isNew){ const nu=Org.onRegister(pendingKey, u.name, State.pendingRef); if(nu) State.user=nu; State.pendingRef=null; localStorage.removeItem(K.ref); }
+      State.view="discover"; toast(`${t("welcome")}, ${State.user.name}!`); render();
+      if(isNew) showReferralSheet(State.user, true); };
     $("#backBtn",body).onclick=renderPhone;
   }
   renderPhone();
@@ -700,8 +776,63 @@ function viewBusiness(){
 }
 
 /* ---------- マイページ（言語変更＋予約一覧） ---------- */
+/* 紹介コード・URLを大きく見せるシート（登録直後 / マイページから） */
+function showReferralSheet(u, welcome){
+  if(!u || !u.refCode) return;
+  const url=Org.refUrl(u.refCode);
+  const back=openSheet(`<h2>${welcome?orgT("welcome_code"):orgT("invite_title")}</h2>
+    <div class="card" style="margin-bottom:12px"><div class="card-body">
+      <div class="muted" style="font-size:13px">${orgT("your_no")}</div>
+      <div style="font-size:20px;font-weight:700">#${u.member_id}　${esc(u.name||"")}</div>
+      <div class="muted" style="font-size:13px;margin-top:12px">${orgT("your_code")}</div>
+      <div style="font-size:28px;font-weight:700;letter-spacing:3px;color:var(--terra)">${esc(u.refCode)}</div>
+      <div class="muted" style="font-size:12px;margin-top:10px;word-break:break-all">🔗 ${esc(url)}</div>
+      <div class="row" style="gap:8px;margin-top:14px">
+        <button class="btn sm" id="cpCode">${orgT("copy")}：${orgT("your_code")}</button>
+        <button class="btn sm secondary" id="cpUrl">${orgT("copy")}：URL</button>
+      </div>
+      <button class="btn teal" id="shareRef" style="margin-top:10px;width:100%">${orgT("share")}</button>
+    </div></div>`);
+  $("#cpCode",back).onclick=()=>copyText(u.refCode);
+  $("#cpUrl",back).onclick=()=>copyText(url);
+  $("#shareRef",back).onclick=()=>{ if(navigator.share) navigator.share({title:"Mi Amigo", text:`Mi Amigo 招待コード: ${u.refCode}`, url}).catch(()=>{}); else copyText(url); };
+}
+
+/* 組織図シート（会員番号1番＝権限者だけが開ける） */
+function openOrgSheet(){
+  const bt=Org.binaryTree(), ut=Org.unilevelTree(), n=Org.count();
+  const cls=r=>r==="admin"?"n-amber":"n-teal";
+  const renderBin=node=>{ if(!node) return ""; let kids="";
+    if(node.left) kids+=`<li>L: ${renderBin(node.left)}</li>`;
+    if(node.right) kids+=`<li>R: ${renderBin(node.right)}</li>`;
+    return `<span class="orgnode ${cls(node.role)}">#${node.member_id} ${esc(node.name)}</span>${kids?`<ul class="orgtree">${kids}</ul>`:""}`; };
+  const renderUni=node=>{ const c=node.role==="admin"?"n-amber":"n-purple";
+    const kids=node.kids.map(k=>`<li>${renderUni(k)}</li>`).join("");
+    return `<span class="orgnode ${c}">#${node.member_id} ${esc(node.name)}${node.kids.length?` (${node.kids.length})`:""}</span>${kids?`<ul class="orgtree">${kids}</ul>`:""}`; };
+  openSheet(`<h2>${orgT("org_chart")}</h2>
+    <p class="muted" style="font-size:13px;margin:-6px 0 10px">${orgT("members")}: <b style="font-size:16px;color:var(--ink)">${n}</b></p>
+    <div class="section-title">${orgT("binary")}</div><ul class="orgtree">${bt?`<li>${renderBin(bt)}</li>`:"—"}</ul>
+    <div class="section-title" style="margin-top:14px">${orgT("unilevel")}</div><ul class="orgtree">${ut?`<li>${renderUni(ut)}</li>`:"—"}</ul>`);
+}
+
 function viewMyPage(){
   const resv=DB.get(K.resv,[]).filter(r=>r.userEmail===State.user.email).sort((a,b)=>b.createdAt-a.createdAt);
+  const ur=userRec();
+  let refCardHtml="";
+  if(ur.member_id){
+    const introName = ur.introKey ? (Org.rec(ur.introKey)?.name||"") : "";
+    refCardHtml=`<div class="card" style="margin:0 0 6px"><div class="card-body">
+      <div class="row" style="align-items:center"><strong style="font-size:15px">🎟️ ${orgT("invite_title")}</strong><span class="spacer"></span><span class="muted" style="font-size:12px">${orgT("your_no")} #${ur.member_id}</span></div>
+      <p class="muted" style="font-size:12px;margin:6px 0 8px">${orgT("invite_sub")}</p>
+      <div class="muted" style="font-size:12px">${orgT("your_code")}</div>
+      <div style="font-size:22px;font-weight:700;letter-spacing:2px;color:var(--terra)">${esc(ur.refCode||"")}</div>
+      ${introName?`<div class="muted" style="font-size:12px;margin-top:6px">${orgT("introduced_by")}: ${esc(introName)}</div>`:""}
+      <div class="row" style="gap:8px;margin-top:10px">
+        <button class="btn sm" id="mpInvite">${orgT("share")}</button>
+        <button class="btn sm secondary" id="mpCopy">${orgT("copy")}</button>
+        ${ur.member_id===1?`<button class="btn sm ghost" id="mpOrg">${orgT("org_chart")}</button>`:""}
+      </div></div></div>`;
+  }
   const wrap=el(`<div><div class="topbar"><h1>${t("tab_mypage")}</h1><p class="sub">${esc(userRec().name)}　📱 ${esc(userRec().phone||userRec().email)}</p></div>
     <div class="pad">
       <div class="card" style="margin-bottom:6px"><div class="card-body">
@@ -714,6 +845,7 @@ function viewMyPage(){
         ${userRec().bio?`<p class="muted" style="font-size:13px;margin:10px 0 0">${esc(userRec().bio)}</p>`:""}
         <button class="btn gold sm" id="makeCard" style="width:100%;margin-top:12px">${t("make_card")}</button>
       </div></div>
+      ${refCardHtml}
       <div class="section-title">${t("language")}</div><div id="myLang"></div>
       <div class="section-title">${t("reservations")}</div><div id="rl"></div>
       <button class="btn ghost" id="bizOpen" style="margin-top:16px">${t("biz_open")}</button>
@@ -721,6 +853,11 @@ function viewMyPage(){
       <p class="hint" style="text-align:center;margin-top:18px">${t("proto_ver")}</p></div></div>`);
   $("#editProfile",wrap).onclick=openProfile;
   $("#makeCard",wrap).onclick=openAmigoCard;
+  if(ur.member_id){
+    $("#mpInvite",wrap)?.addEventListener("click",()=>showReferralSheet(userRec(),false));
+    $("#mpCopy",wrap)?.addEventListener("click",()=>copyText(userRec().refCode||""));
+    $("#mpOrg",wrap)?.addEventListener("click",openOrgSheet);
+  }
   $("#bizOpen",wrap).onclick=()=>{ State.business=true; render(); };
   $("#myLang",wrap).appendChild(langSeg(()=>render()));
   const list=$("#rl",wrap);
@@ -733,6 +870,11 @@ function viewMyPage(){
 /* ---------- 起動 ---------- */
 document.querySelectorAll("#tabbar .tab").forEach(tb=>{ tb.onclick=()=>{ stopSpeak(); State.chatGroup=null; State.view=tb.dataset.view; render(); }; });
 State.user=Auth.current();
+// 既ログインで組織フィールド未付与なら補完（最初の人＝1番に）
+if(State.user && !State.user.member_id){ const nu=Org.onRegister(State.user.email, State.user.name, null); if(nu) State.user=nu; }
+// 紹介URL ?ref=CODE を取り込み（多段の登録フローをまたいで保持）
+State.pendingRef = new URLSearchParams(location.search).get("ref") || localStorage.getItem(K.ref) || null;
+if(State.pendingRef) localStorage.setItem(K.ref, State.pendingRef);
 // URLに #business / #ads があれば企業向け広告ページを表示（企業に直接リンクを送れる）
 if(/^#(business|ads)$/.test(location.hash)) State.business=true;
 render();

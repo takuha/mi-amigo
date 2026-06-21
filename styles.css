@@ -248,3 +248,11 @@ ul.clean2 li::before{ content:"✓"; color:var(--teal); font-weight:800; positio
 .plat{ border:none; cursor:pointer; color:#fff; border-radius:14px; padding:12px 4px; display:flex; flex-direction:column; align-items:center; gap:5px; font-size:10px; font-weight:700; }
 .plat span:first-child{ font-size:22px; }
 .plat:active{ transform:scale(.96); }
+
+/* ---------- 組織図（紹介エンジン） ---------- */
+.orgtree{ list-style:none; margin:0; padding-left:16px; }
+.orgtree li{ margin:4px 0; position:relative; }
+.orgnode{ display:inline-block; padding:3px 9px; border-radius:8px; font-size:13px; font-weight:600; }
+.orgnode.n-amber{ background:#faeeda; color:#854f0b; }
+.orgnode.n-teal{ background:#e1f5ee; color:#0f6e56; }
+.orgnode.n-purple{ background:#eeedfe; color:#534ab7; }
