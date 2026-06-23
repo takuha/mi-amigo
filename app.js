@@ -175,11 +175,14 @@ Object.assign(I18N.es,{ tab_community:"Amigos", community_sub:"Conecta con viaje
 
 // 追加i18n（プロフィール拡張・アミーゴカード）
 Object.assign(I18N.ja,{ age:"年齢", gender:"性別", g_m:"男性", g_f:"女性", g_o:"その他", g_na:"無回答", from_country:"出身国", proud:"誇りに思う国（複数OK）", proud_hint:"あなたが大好き・誇りに思う国を選んで追加", add_country:"＋ 追加", select_ph:"選択…", optional:"（任意）",
-  amigo_card:"アミーゴカード", make_card:"🎫 アミーゴカードを作る", save_card:"📥 画像を保存", share_card:"📲 シェアして拡散", card_from:"出身", card_loves:"大好きな国", card_stamps:"集めたスタンプ", card_made:"カードを保存しました", card_tagline:"アンティグアを歩こう" });
+  amigo_card:"アミーゴカード", make_card:"🎫 アミーゴカードを作る", save_card:"📥 画像を保存", share_card:"📲 シェアして拡散", card_from:"出身", card_loves:"大好きな国", card_stamps:"集めたスタンプ", card_made:"カードを保存しました", card_tagline:"アンティグアを歩こう",
+  card_what:"あなたの旅プロフィールを1枚の画像に。SNSでシェアして友だちを招待しよう（招待コード入り）", card_invite:"招待コード" });
 Object.assign(I18N.en,{ age:"Age", gender:"Gender", g_m:"Male", g_f:"Female", g_o:"Other", g_na:"Prefer not to say", from_country:"From", proud:"Countries you love (multiple)", proud_hint:"Add the countries you love or are proud of", add_country:"＋ Add", select_ph:"Select…", optional:"(optional)",
-  amigo_card:"Amigo Card", make_card:"🎫 Make my Amigo Card", save_card:"📥 Save image", share_card:"📲 Share it", card_from:"From", card_loves:"Loves", card_stamps:"Stamps", card_made:"Card saved", card_tagline:"Walking Antigua" });
+  amigo_card:"Amigo Card", make_card:"🎫 Make my Amigo Card", save_card:"📥 Save image", share_card:"📲 Share it", card_from:"From", card_loves:"Loves", card_stamps:"Stamps", card_made:"Card saved", card_tagline:"Walking Antigua",
+  card_what:"Turn your travel profile into one image. Share it on social to invite friends (includes your invite code).", card_invite:"Invite code" });
 Object.assign(I18N.es,{ age:"Edad", gender:"Género", g_m:"Hombre", g_f:"Mujer", g_o:"Otro", g_na:"Prefiero no decir", from_country:"De", proud:"Países que amas (varios)", proud_hint:"Agrega los países que amas o de los que estás orgulloso", add_country:"＋ Agregar", select_ph:"Elegir…", optional:"(opcional)",
-  amigo_card:"Tarjeta Amigo", make_card:"🎫 Crear mi Tarjeta Amigo", save_card:"📥 Guardar imagen", share_card:"📲 Compartir", card_from:"De", card_loves:"Ama", card_stamps:"Sellos", card_made:"Tarjeta guardada", card_tagline:"Caminando Antigua" });
+  amigo_card:"Tarjeta Amigo", make_card:"🎫 Crear mi Tarjeta Amigo", save_card:"📥 Guardar imagen", share_card:"📲 Compartir", card_from:"De", card_loves:"Ama", card_stamps:"Sellos", card_made:"Tarjeta guardada", card_tagline:"Caminando Antigua",
+  card_what:"Convierte tu perfil de viaje en una imagen. Compártela para invitar amigos (incluye tu código).", card_invite:"Código" });
 
 // 追加i18n（世界遺産ステージ・地球儀）
 Object.assign(I18N.ja,{ globe_title:"世界遺産マップ", globe_sub:"謎解きをコンプリートして次の遺産へ", you_are_here:"今ここ", stage_open:"解禁中", stage_next:"次のステージ", stage_locked:"近日公開", stage_done:"コンプリート", st_stage:"ステージ", to_quest:"謎解きへ", to_guide:"音声ガイドへ", complete_to_unlock:"アンティグアをコンプリートで解禁", locked_title:"近日公開", locked_msg:"この世界遺産はまだ準備中です。まずは第1ステージ「アンティグア」の謎解きをコンプリートしよう！", stage_unlocked_toast:"🎉 アンティグア制覇！次のステージが解禁されました", drag_hint:"ドラッグで地球をまわせます" });
@@ -229,9 +232,10 @@ const CONTACT_EMAIL="takuha.southamerica@gmail.com";
 // コミュニティ送客リンク（SNS→アプリ→外部グループの"次の入り口"）。urlを入れると参加ボタンが有効化、空なら「準備中」表示
 // ※過去ログを遡れる種類推奨：LINEオープンチャット／WhatsAppチャンネル／IGブロードキャスト
 const COMMUNITY_LINKS=[
-  { name:"LINE オープンチャット", emoji:"💚", region:"日本", url:"" },
-  { name:"WhatsApp チャンネル", emoji:"💬", region:"中南米", url:"" },
+  { name:"LINE オープンチャット", emoji:"💚", region:"", url:"" },
+  { name:"WhatsApp", emoji:"💬", region:"", url:"" },
   { name:"Instagram", emoji:"📷", region:"", url:"" },
+  { name:"TikTok", emoji:"🎵", region:"", url:"" },
 ];
 // 開拓投票：この票数が集まった世界遺産がアプリに開拓される（ガイド＆謎解きを作る）
 const VOTE_UNLOCK=10;
@@ -723,6 +727,7 @@ async function drawAmigoCard(){
   if(r.bio){ let bio=r.bio; if(bio.length>26) bio=bio.slice(0,25)+"…"; x.font="400 28px sans-serif"; x.fillStyle="#8a7d72"; x.fillText(bio, W/2, yy); }
   x.fillStyle="#1d7a73"; roundRect(x,W/2-200,1070,400,92,46); x.fill();
   x.fillStyle="#fff"; x.font="800 38px sans-serif"; x.fillText(`🎯 ${t("card_stamps")} ${done}/${stops.length}`, W/2, 1128);
+  if(r.refCode){ x.fillStyle="rgba(255,255,255,0.97)"; x.font="800 30px sans-serif"; x.fillText(`🎟️ ${t("card_invite")}: ${r.refCode}`, W/2, H-108); }
   x.fillStyle="rgba(255,255,255,0.95)"; x.font="600 28px sans-serif"; x.fillText("takuha.github.io/mi-amigo", W/2, H-58);
   return cv.toDataURL("image/png");
 }
@@ -733,7 +738,8 @@ async function openAmigoCard(){
   let url; try{ url=await drawAmigoCard(); }catch{ toast(t("ck_fail")); return; }
   $("#cardPrev",back).innerHTML=`<img src="${url}" style="width:100%;border-radius:16px;display:block" />`;
   $("#cardSave",back).onclick=()=>{ const a=document.createElement("a"); a.href=url; a.download="mi_amigo_card.png"; a.click(); toast(t("card_made")); };
-  $("#cardShare",back).onclick=async()=>{ try{ if(navigator.share){ const blob=await (await fetch(url)).blob(); const file=new File([blob],"mi_amigo_card.png",{type:"image/png"}); const p={text:`Mi Amigo — ${t("card_tagline")} 🌋 ${location.origin+location.pathname}`}; if(navigator.canShare&&navigator.canShare({files:[file]})) p.files=[file]; await navigator.share(p); } else { await navigator.clipboard?.writeText(location.origin+location.pathname); toast(t("copied")); } }catch{} };
+  const shareUrl=(userRec().refCode?Org.refUrl(userRec().refCode):(location.origin+location.pathname));
+  $("#cardShare",back).onclick=async()=>{ try{ if(navigator.share){ const blob=await (await fetch(url)).blob(); const file=new File([blob],"mi_amigo_card.png",{type:"image/png"}); const p={text:`Mi Amigo — ${t("card_tagline")} 🌋 ${shareUrl}`}; if(navigator.canShare&&navigator.canShare({files:[file]})) p.files=[file]; await navigator.share(p); } else { await navigator.clipboard?.writeText(shareUrl); toast(t("copied")); } }catch{} };
 }
 
 /* ---------- アルバム＋5プラットフォーム共有 ---------- */
@@ -1161,6 +1167,7 @@ function viewMyPage(){
   }
   const wrap=el(`<div><div class="topbar"><h1>${t("tab_mypage")}</h1><p class="sub">${esc(userRec().name)}　📱 ${esc(userRec().phone||userRec().email)}</p></div>
     <div class="pad">
+      <div class="section-title" style="margin-top:0">${t("language")}</div><div id="myLang"></div>
       <div class="card" style="margin-bottom:6px"><div class="card-body" style="padding:12px">
         <div class="row" style="align-items:center"><strong style="font-size:15px">🌎 ${t("globe_title")}</strong><span class="spacer"></span><span class="muted" style="font-size:11px">${t("drag_hint")}</span></div>
         <p class="muted" style="font-size:12px;margin:4px 0 8px">${t("globe_sub")}</p>
@@ -1176,9 +1183,9 @@ function viewMyPage(){
         </div>
         ${userRec().bio?`<p class="muted" style="font-size:13px;margin:10px 0 0">${esc(userRec().bio)}</p>`:""}
         <button class="btn gold sm" id="makeCard" style="width:100%;margin-top:12px">${t("make_card")}</button>
+        <p class="muted" style="font-size:11px;margin:6px 2px 0;text-align:center">${t("card_what")}</p>
       </div></div>
       ${refCardHtml}
-      <div class="section-title">${t("language")}</div><div id="myLang"></div>
       ${resv.length?`<div class="section-title">${t("reservations")}</div><div id="rl"></div>`:""}
       ${isAdmin()?`<div class="section-title">🔧 ${t("admin_section")}</div><div id="adminDungeons"></div>`:""}
       <div class="section-title">🔔 ${t("notif_section")}</div><div id="notifBox"></div>
