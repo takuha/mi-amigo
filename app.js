@@ -902,14 +902,15 @@ function onCloudVotesChanged(){
 }
 // クラウド投票エンジン（Firestoreの votes コレクションを全員で共有・リアルタイム購読）
 const Cloud = {
-  ready:false, db:null, auth:null, uid:null, counts:{}, mine:new Set(), loaded:false,
+  ready:false, db:null, auth:null, messaging:null, uid:null, counts:{}, mine:new Set(), loaded:false,
   init(){
     try{
       if(!window.FIREBASE_CONFIG || !window.firebase || !firebase.initializeApp) return;
       firebase.initializeApp(window.FIREBASE_CONFIG);
       this.db=firebase.firestore(); this.uid=cloudUid(); this.ready=true;
       try{ if(firebase.auth){ this.auth=firebase.auth(); this.auth.useDeviceLanguage(); } }catch(e){ this.auth=null; }
-      console.log("[Cloud] Firebase 接続OK:", window.FIREBASE_CONFIG.projectId, "auth:", !!this.auth);
+      try{ if(firebase.messaging){ this.messaging=firebase.messaging(); this.messaging.onMessage(p=>{ const n=(p&&p.notification)||{}; pushNotif([n.title,n.body].filter(Boolean).join("：")||"📣"); }); } }catch(e){ this.messaging=null; }
+      console.log("[Cloud] Firebase 接続OK:", window.FIREBASE_CONFIG.projectId, "auth:", !!this.auth, "msg:", !!this.messaging);
       this.watch();
     }catch(e){ console.warn("[Cloud] init失敗（端末内デモで継続）", e); this.ready=false; }
   },
@@ -958,6 +959,22 @@ function isAdmin(){ const u=userRec(); return !!u && (u.member_id===1 || u.role=
 // 通知（アプリ内お知らせ＋Webプッシュ）。※全ユーザーへのクロス端末配信は本番でバックエンド/FCMが必要
 function requestNotify(){ if(!("Notification" in window)){ toast(t("notif_unsupported")); return; }
   Notification.requestPermission().then(p=>{ toast(p==="granted"?t("notif_on"):t("notif_off")); render(); }); }
+// 本物のWebプッシュ購読（FCM）。VAPIDキーがあれば全端末へ届くトークンをFirestoreに保存。
+// 揃っていない時はローカル通知（同端末のみ）にフォールバック。
+async function enablePush(){
+  if(!("Notification" in window)){ toast(t("notif_unsupported")); return; }
+  if(Cloud.ready && Cloud.messaging && window.FIREBASE_VAPID_KEY){
+    try{
+      const perm=await Notification.requestPermission();
+      if(perm!=="granted"){ toast(t("notif_off")); render(); return; }
+      const reg=await navigator.serviceWorker.register("firebase-messaging-sw.js",{ scope:"./fcm/" });
+      const token=await Cloud.messaging.getToken({ vapidKey:window.FIREBASE_VAPID_KEY, serviceWorkerRegistration:reg });
+      if(token){ await Cloud.db.collection("pushTokens").doc(token).set({ token, uid:Cloud.uid, lang:State.lang, ts:firebase.firestore.FieldValue.serverTimestamp() }); }
+      toast(t("notif_on")); render(); return;
+    }catch(e){ console.warn("[Push] FCM購読失敗→ローカル通知にフォールバック", e); }
+  }
+  Notification.requestPermission().then(p=>{ toast(p==="granted"?t("notif_on"):t("notif_off")); render(); });
+}
 function pushNotif(text){ const list=DB.get(K.notifs,[]); list.unshift({text, ts:Date.now()}); if(list.length>30) list.length=30; DB.set(K.notifs,list);
   toast(text);
   try{ if("Notification" in window && Notification.permission==="granted"){
@@ -1302,7 +1319,7 @@ function viewMyPage(){
     nb.innerHTML=(granted?"":`<button class="btn gold sm" id="notifOn" style="width:100%;margin-bottom:8px">🔔 ${t("notif_enable")}</button>`)
       +(list.length? list.slice(0,6).map(n=>`<div class="list-item"><div style="flex:1"><div style="font-size:13px">${esc(n.text)}</div><div class="muted" style="font-size:11px;margin-top:2px">${timeAgo(n.ts)}</div></div></div>`).join("")
         : `<p class="muted" style="font-size:12px">${t("notif_empty")}</p>`);
-    $("#notifOn",nb)?.addEventListener("click",requestNotify);
+    $("#notifOn",nb)?.addEventListener("click",enablePush);
   }
   // コミュニティ送客（LINE/WhatsApp/IG）。SNS→アプリ→外部グループの次の入り口
   const cb=$("#commBox",wrap);

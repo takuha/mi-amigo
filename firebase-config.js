@@ -18,3 +18,8 @@ window.FIREBASE_CONFIG = {
   appId: "1:851635897791:web:95731ae3dc7aab5dd10d0a",
   measurementId: "G-9RFZCKGYKG"
 };
+
+// Webプッシュ用 VAPIDキー（Firebaseコンソール → プロジェクト設定 → Cloud Messaging →
+// 「ウェブ設定」→ ウェブプッシュ証明書 → 鍵ペアを生成 でコピーした文字列を入れる）。
+// 空の間はプッシュ購読はスキップ（ローカル通知のみで動作）。これは公開してOKな公開鍵です。
+window.FIREBASE_VAPID_KEY = "BN12fd80Npp9KaxGY_ypYHhRDmc_C90XRbqzYj7DIni9Bj6iO5pO1iNDiTOz8wdEy8P5Kdr1LX4QQhhajPtoIUM";
