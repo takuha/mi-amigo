@@ -240,10 +240,10 @@ const CONTACT_EMAIL="takuha.southamerica@gmail.com";
 // コミュニティ送客リンク（SNS→アプリ→外部グループの"次の入り口"）。urlを入れると参加ボタンが有効化、空なら「準備中」表示
 // ※過去ログを遡れる種類推奨：LINEオープンチャット／WhatsAppチャンネル／IGブロードキャスト
 const COMMUNITY_LINKS=[
-  { name:"LINE オープンチャット", emoji:"💚", region:"", url:"" },
-  { name:"WhatsApp", emoji:"💬", region:"", url:"" },
-  { name:"Instagram", emoji:"📷", region:"", url:"" },
-  { name:"TikTok", emoji:"🎵", region:"", url:"" },
+  { name:"LINE オープンチャット", emoji:"💚", region:"", url:"https://line.me/ti/g2/msCcSCmaXOhkhB4zRl72lmUw8mLh3TkLiUVHSQ?utm_source=invitation&utm_medium=link_copy&utm_campaign=default" },
+  { name:"WhatsApp", emoji:"💬", region:"", url:"https://whatsapp.com/channel/0029VbDFK7bBKfi5HZ8iyW30" },
+  { name:"Instagram", emoji:"📷", region:"", url:"https://www.instagram.com/miamigo202606" },
+  { name:"TikTok", emoji:"🎵", region:"", url:"https://www.tiktok.com/@miamigo202606" },
 ];
 // 開拓投票：この票数が集まった世界遺産がアプリに開拓される（ガイド＆謎解きを作る）
 const VOTE_UNLOCK=10;
