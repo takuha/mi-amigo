@@ -218,6 +218,10 @@ Object.assign(I18N.es,{ admin_section:"Crear próxima mazmorra (admin)", admin_o
 Object.assign(I18N.ja,{ contact_to:"お問い合わせ先", contact_section:"お問い合わせ", contact_note:"ガイド申込・ご意見・ご質問はこちらへ。運営に届きます。", fb_cta:"💬 なんでも言いたいボックス", fb_title:"なんでも言いたいボックス", fb_sub:"ご意見・ご要望・お問い合わせ、なんでもどうぞ。運営に届きます。", fb_msg:"メッセージ", fb_msg_ph:"メッセージを入力…", fb_send:"📩 送信する", fb_need:"メッセージを入力してください" });
 Object.assign(I18N.en,{ contact_to:"Contact", contact_section:"Contact", contact_note:"Guide requests, feedback and questions — they reach our team.", fb_cta:"💬 Say anything", fb_title:"Say anything", fb_sub:"Feedback, requests, questions — anything goes. It reaches our team.", fb_msg:"Message", fb_msg_ph:"Type your message…", fb_send:"📩 Send", fb_need:"Please enter a message" });
 Object.assign(I18N.es,{ contact_to:"Contacto", contact_section:"Contacto", contact_note:"Solicitudes de guía, comentarios y preguntas — llegan a nuestro equipo.", fb_cta:"💬 Buzón de comentarios", fb_title:"Buzón de comentarios", fb_sub:"Comentarios, solicitudes, preguntas — lo que sea. Llega a nuestro equipo.", fb_msg:"Mensaje", fb_msg_ph:"Escribe tu mensaje…", fb_send:"📩 Enviar", fb_need:"Escribe un mensaje" });
+// 追加i18n（B3：申込・問い合わせのクラウド保存＋admin一覧）
+Object.assign(I18N.ja,{ sub_sent:"送信しました。運営に届きました ✅", subs_section:"📥 申込・問い合わせ一覧", subs_empty:"まだ申込・問い合わせはありません。", subs_offline:"クラウド未接続のため一覧は表示できません。", t_guide:"ガイド申込", t_feedback:"ご意見", t_biz:"広告掲載" });
+Object.assign(I18N.en,{ sub_sent:"Sent — it reached our team ✅", subs_section:"📥 Submissions", subs_empty:"No submissions yet.", subs_offline:"Not connected to the cloud — list unavailable.", t_guide:"Guide request", t_feedback:"Feedback", t_biz:"Advertising" });
+Object.assign(I18N.es,{ sub_sent:"Enviado — llegó a nuestro equipo ✅", subs_section:"📥 Solicitudes", subs_empty:"Aún no hay solicitudes.", subs_offline:"Sin conexión a la nube — lista no disponible.", t_guide:"Solicitud de guía", t_feedback:"Comentario", t_biz:"Publicidad" });
 
 // 追加i18n（電話番号認証）
 Object.assign(I18N.ja,{ phone:"電話番号", phone_ph:"電話番号（ハイフン無し）", send_code:"認証コードを送信", code:"認証コード", code_ph:"6桁のコード", verify:"確認して続ける", nick_new:"お名前 / ニックネーム（新規の方）", demo_code:"デモ用コード", sms_note:"デモ版：実際のSMS送信には本番でサーバー連携(Firebase/Twilio等)が必要です。コードは画面に表示します。", code_sent:"認証コードを送信しました", err_phone:"電話番号を入力してください", err_code:"コードが正しくありません" });
@@ -829,8 +833,9 @@ function viewBusiness(){
       <button class="btn ghost" id="bBack" style="margin-top:10px">${t("biz_back")}</button>
     </div></div>`);
   $("#bizLang",wrap).appendChild(langSeg(()=>render()));
-  $("#bSend",wrap).onclick=()=>{
+  $("#bSend",wrap).onclick=async ()=>{
     const company=$("#bC",wrap).value, person=$("#bP",wrap).value, contact=$("#bM",wrap).value, budget=$("#bB",wrap).value, msg=$("#bMsg",wrap).value;
+    if(Cloud.ready && await Cloud.submit("biz", { company:company||"", person:person||"", contact:contact||"", budget:budget||"", msg:msg||"" })){ toast(t("sub_sent")); return; }
     const subject=encodeURIComponent(`[Mi Amigo 広告掲載] ${company||""}`);
     const bodyTxt=`${t("biz_company")}: ${company}\n${t("biz_person")}: ${person}\n${t("biz_contact")}: ${contact}\n${t("biz_budget")}: ${budget}\n${t("biz_message")}: ${msg}\n\n— Mi Amigo (${location.origin+location.pathname})`;
     window.location.href=`mailto:${BIZ_EMAIL}?subject=${subject}&body=${encodeURIComponent(bodyTxt)}`;
@@ -890,6 +895,18 @@ const Cloud = {
     const ref=this.db.collection("votes").doc(stageId+"__"+this.uid);
     try{ if(on) await ref.set({stage:stageId, uid:this.uid, ts:firebase.firestore.FieldValue.serverTimestamp()}); else await ref.delete(); }
     catch(e){ console.warn("[Cloud] 投票の保存に失敗", e); }
+  },
+  // 申込・問い合わせをFirestoreの submissions に保存（TAKUHAがオンライン一覧で確認）
+  async submit(type, data){
+    if(!this.ready) return false;
+    try{ await this.db.collection("submissions").add({type, ...data, uid:this.uid, lang:State.lang, ts:firebase.firestore.FieldValue.serverTimestamp()}); return true; }
+    catch(e){ console.warn("[Cloud] submit失敗", e); return false; }
+  },
+  // 申込・問い合わせ一覧をリアルタイム購読（admin用）。unsubscribe関数を返す
+  subscribeSubmissions(cb){
+    if(!this.ready){ cb(null); return ()=>{}; }
+    return this.db.collection("submissions").orderBy("ts","desc").limit(50)
+      .onSnapshot(snap=>cb(snap.docs.map(d=>({id:d.id, ...d.data()}))), err=>{ console.warn("[Cloud] submissions購読エラー", err); cb(null); });
   }
 };
 function seedVotes(){ if(!DB.get(K.votes,null)) DB.set(K.votes,{...VOTE_SEED}); }
@@ -997,10 +1014,11 @@ function openGuideRequest(prefill){
     <p class="muted" style="font-size:12px;text-align:center;margin-top:10px">${t("contact_to")}：<a href="mailto:${CONTACT_EMAIL}" style="color:var(--teal)">${CONTACT_EMAIL}</a></p>`);
   const sel=$("#grDest",back), other=$("#grOther",back);
   sel.onchange=()=>{ other.style.display = sel.value==="__other"?"block":"none"; };
-  $("#grSend",back).onclick=()=>{
+  $("#grSend",back).onclick=async ()=>{
     const dest = sel.value==="__other" ? (other.value||"").trim() : sel.value;
     if(!dest){ toast(t("gr_need_dest")); return; }
     const from=$("#grFrom",back).value, to=$("#grTo",back).value, name=$("#grName",back).value, msg=$("#grMsg",back).value;
+    if(Cloud.ready && await Cloud.submit("guide", { dest, period:`${from||"-"} 〜 ${to||"-"}`, name:name||"", msg:msg||"", contact:userRec().phone||userRec().email||"" })){ closeSheet(); toast(t("sub_sent")); return; }
     const subject=`[Mi Amigo ガイド申込] ${dest}`;
     const body=`${t("gr_mail_intro")}\n\n■ ${t("gr_dest")}: ${dest}\n■ ${t("gr_period")}: ${from||"-"} 〜 ${to||"-"}\n■ ${t("gr_name")}: ${name||"-"}\n■ ${t("gr_msg")}: ${msg||"-"}\n\n— Mi Amigo / ${userRec().phone||userRec().email||""}`;
     window.location.href=`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -1015,9 +1033,10 @@ function openFeedback(){
     <div class="field"><label>${t("fb_msg")}</label><textarea id="fbMsg" rows="4" placeholder="${t("fb_msg_ph")}" style="width:100%;padding:13px 14px;font-size:16px;border:1.5px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);font-family:inherit;resize:vertical"></textarea></div>
     <button class="btn gold" id="fbSend">${t("fb_send")}</button>
     <p class="muted" style="font-size:12px;text-align:center;margin-top:10px">${t("contact_to")}：<a href="mailto:${CONTACT_EMAIL}" style="color:var(--teal)">${CONTACT_EMAIL}</a></p>`);
-  $("#fbSend",back).onclick=()=>{
+  $("#fbSend",back).onclick=async ()=>{
     const name=$("#fbName",back).value, msg=$("#fbMsg",back).value;
     if(!(msg||"").trim()){ toast(t("fb_need")); return; }
+    if(Cloud.ready && await Cloud.submit("feedback", { name:name||"", msg:msg||"", contact:userRec().phone||userRec().email||"" })){ closeSheet(); toast(t("sub_sent")); return; }
     const subject=`[Mi Amigo ご意見・お問い合わせ] ${name||""}`.trim();
     const body=`${t("fb_msg")}:\n${msg}\n\n■ ${t("gr_name")}: ${name||"-"}\n— Mi Amigo / ${userRec().phone||userRec().email||""}`;
     window.location.href=`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -1188,6 +1207,7 @@ function viewMyPage(){
       ${refCardHtml}
       ${resv.length?`<div class="section-title">${t("reservations")}</div><div id="rl"></div>`:""}
       ${isAdmin()?`<div class="section-title">🔧 ${t("admin_section")}</div><div id="adminDungeons"></div>`:""}
+      ${isAdmin()?`<div class="section-title">${t("subs_section")}</div><div id="adminSubs"></div>`:""}
       <div class="section-title">🔔 ${t("notif_section")}</div><div id="notifBox"></div>
       <div class="section-title">📣 ${t("community_section")}</div><div id="commBox"></div>
       <div class="section-title">${t("contact_section")}</div>
@@ -1220,6 +1240,31 @@ function viewMyPage(){
         <button class="btn gold sm" data-dp="${s.id}" style="width:100%;margin-top:10px">${t("dp_open")}</button>
       </div></div>`; }).join("") || `<p class="muted" style="font-size:12px">${t("admin_empty")}</p>`;
     ad.querySelectorAll("[data-dp]").forEach(b=>b.onclick=()=>{ const st=DATA.stages.find(s=>s.id===b.dataset.dp); openDungeonPreview(st); });
+  }
+  // 管理（TAKUHA専用）：申込・問い合わせ一覧（Firestoreをリアルタイム購読）
+  const subsEl=$("#adminSubs",wrap);
+  if(subsEl && isAdmin()){
+    if(window._subsUnsub){ window._subsUnsub(); window._subsUnsub=null; }
+    subsEl.innerHTML=`<p class="muted" style="font-size:12px">…</p>`;
+    window._subsUnsub = Cloud.subscribeSubmissions(rows=>{
+      if(!document.body.contains(subsEl)){ if(window._subsUnsub){ window._subsUnsub(); window._subsUnsub=null; } return; }
+      if(rows===null){ subsEl.innerHTML=`<p class="muted" style="font-size:12px">${t("subs_offline")}</p>`; return; }
+      if(!rows.length){ subsEl.innerHTML=`<p class="muted" style="font-size:12px">${t("subs_empty")}</p>`; return; }
+      subsEl.innerHTML=rows.map(r=>{
+        const tl = r.type==="guide"?t("t_guide"):r.type==="biz"?t("t_biz"):t("t_feedback");
+        const badge = r.type==="guide"?"stay":r.type==="biz"?"exp":"food";
+        const when = (r.ts&&r.ts.toDate)?timeAgo(r.ts.toDate().getTime()):"";
+        const body = r.type==="guide" ? `${esc(r.dest||"")}${r.period?" ・ "+esc(r.period):""}${r.msg?"<br>"+esc(r.msg):""}`
+          : r.type==="biz" ? `${esc(r.company||"")}${r.person?" / "+esc(r.person):""}${r.msg?"<br>"+esc(r.msg):""}`
+          : esc(r.msg||"");
+        const who = esc(r.name||r.company||"")+(r.contact?" ・ "+esc(r.contact):"");
+        return `<div class="card" style="margin-bottom:8px"><div class="card-body" style="padding:12px">
+          <div class="row" style="align-items:center;gap:8px"><span class="badge ${badge}">${tl}</span><span class="spacer"></span><span class="muted" style="font-size:11px">${when}</span></div>
+          <div style="font-size:13px;margin-top:6px">${body||"—"}</div>
+          ${who?`<div class="muted" style="font-size:11px;margin-top:6px">${who}</div>`:""}
+        </div></div>`;
+      }).join("");
+    });
   }
   // お知らせ（アプリ内通知フィード＋Webプッシュ オプトイン）
   const nb=$("#notifBox",wrap);
