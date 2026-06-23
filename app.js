@@ -852,13 +852,53 @@ function stageProgress(stage){
 // クリア条件：全スポットの70%（10個中7個）。
 function stageClearMin(stage){ const p=stageProgress(stage); return Math.ceil(p.total*0.7); }
 function stageComplete(stage){ const p=stageProgress(stage); return p.total>0 && p.done>=stageClearMin(stage); }
-// 開拓投票ヘルパ（localStorageデモ。本番は全ユーザー合算のバックエンドが必要）
+// 開拓投票ヘルパ。Firebase設定があれば全ユーザー合算（Cloud）、無ければ端末内デモ（localStorage）。
+// 表示票数 ＝ VOTE_SEED（初期の盛り上がり）＋ クラウドの実投票数。
+function cloudUid(){ let id=DB.get("ma_uid",null); if(!id){ id="u_"+randSalt(); DB.set("ma_uid",id); } return id; }
+let VoteWatch=null; // 投票シートが開いている間、他ユーザーの票をライブ反映するフック {root,paint}
+function onCloudVotesChanged(){
+  if(VoteWatch){ if(document.body.contains(VoteWatch.root)){ try{ VoteWatch.paint(); }catch{} } else VoteWatch=null; }
+  try{ render(); }catch{}
+}
+// クラウド投票エンジン（Firestoreの votes コレクションを全員で共有・リアルタイム購読）
+const Cloud = {
+  ready:false, db:null, uid:null, counts:{}, mine:new Set(), loaded:false,
+  init(){
+    try{
+      if(!window.FIREBASE_CONFIG || !window.firebase || !firebase.initializeApp) return;
+      firebase.initializeApp(window.FIREBASE_CONFIG);
+      this.db=firebase.firestore(); this.uid=cloudUid(); this.ready=true;
+      console.log("[Cloud] Firebase 接続OK:", window.FIREBASE_CONFIG.projectId);
+      this.watch();
+    }catch(e){ console.warn("[Cloud] init失敗（端末内デモで継続）", e); this.ready=false; }
+  },
+  watch(){
+    this.db.collection("votes").onSnapshot(snap=>{
+      const counts={}, mine=new Set();
+      snap.forEach(d=>{ const x=d.data()||{}; const s=x.stage; if(!s) return; counts[s]=(counts[s]||0)+1; if(x.uid===this.uid) mine.add(s); });
+      this.counts=counts; this.mine=mine; this.loaded=true; onCloudVotesChanged();
+    }, err=>console.warn("[Cloud] votes購読エラー", err));
+  },
+  async setVote(stageId,on){
+    if(!this.ready) return;
+    const ref=this.db.collection("votes").doc(stageId+"__"+this.uid);
+    try{ if(on) await ref.set({stage:stageId, uid:this.uid, ts:firebase.firestore.FieldValue.serverTimestamp()}); else await ref.delete(); }
+    catch(e){ console.warn("[Cloud] 投票の保存に失敗", e); }
+  }
+};
 function seedVotes(){ if(!DB.get(K.votes,null)) DB.set(K.votes,{...VOTE_SEED}); }
-function stageVotes(id){ seedVotes(); return DB.get(K.votes,{})[id]||0; }
-function hasVoted(id){ return !!DB.get(K.myvotes,{})[id]; }
-function toggleVote(id){ seedVotes(); const v=DB.get(K.votes,{}), mine=DB.get(K.myvotes,{});
+function stageVotes(id){ if(Cloud.ready) return (VOTE_SEED[id]||0)+(Cloud.counts[id]||0); seedVotes(); return DB.get(K.votes,{})[id]||0; }
+function hasVoted(id){ if(Cloud.ready) return Cloud.mine.has(id); return !!DB.get(K.myvotes,{})[id]; }
+function toggleVote(id){
+  if(Cloud.ready){
+    const now=!Cloud.mine.has(id);
+    if(now){ Cloud.mine.add(id); Cloud.counts[id]=(Cloud.counts[id]||0)+1; } else { Cloud.mine.delete(id); Cloud.counts[id]=Math.max(0,(Cloud.counts[id]||1)-1); }
+    Cloud.setVote(id,now); return stageVotes(id);
+  }
+  seedVotes(); const v=DB.get(K.votes,{}), mine=DB.get(K.myvotes,{});
   if(mine[id]){ delete mine[id]; v[id]=Math.max(0,(v[id]||1)-1); } else { mine[id]=true; v[id]=(v[id]||0)+1; }
-  DB.set(K.votes,v); DB.set(K.myvotes,mine); return v[id]; }
+  DB.set(K.votes,v); DB.set(K.myvotes,mine); return v[id];
+}
 function stagePioneered(stage){ return stageVotes(stage.id)>=VOTE_UNLOCK; }
 // TAKUHA（会員番号1番＝ルート＝admin）だけが制作レイヤーを見られる
 function isAdmin(){ const u=userRec(); return !!u && (u.member_id===1 || u.role==="admin"); }
@@ -997,6 +1037,7 @@ function openVoteBox(){
   const paint=()=>{ const list=$("#voteList",back); list.innerHTML=cands.map(rowHtml).join("");
     list.querySelectorAll("[data-vote]").forEach(b=>b.onclick=()=>{ const nv=toggleVote(b.dataset.vote); if(nv>=VOTE_UNLOCK) notifyPioneer(DATA.stages.find(s=>s.id===b.dataset.vote)); paint(); }); };
   paint();
+  VoteWatch={root:back, paint}; // 他ユーザーの投票がリアルタイムで反映される
 }
 // 次ダンジョンのガイド＆謎解きプレビュー（TAKUHA専用・一般ユーザー非公開）
 function openDungeonPreview(stage){
@@ -1222,4 +1263,5 @@ State.pendingRef = new URLSearchParams(location.search).get("ref") || localStora
 if(State.pendingRef) localStorage.setItem(K.ref, State.pendingRef);
 // URLに #business / #ads があれば企業向け広告ページを表示（企業に直接リンクを送れる）
 if(/^#(business|ads)$/.test(location.hash)) State.business=true;
+Cloud.init(); // Firebase接続（設定があればクラウド投票が有効化）
 render();

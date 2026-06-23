@@ -1,10 +1,11 @@
 // Mi Amigo — Service Worker（オフライン対応）
 // アプリ本体を端末にキャッシュ。電波が弱いアンティグアの路上でも起動・音声ガイド再生できる。
-const CACHE = "mi-amigo-v19";
+const CACHE = "mi-amigo-v20";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
+  "./firebase-config.js",
   "./data.js",
   "./app.js",
   "./manifest.json",
