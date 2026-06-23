@@ -621,9 +621,8 @@ function viewMap(){
       const dist=State.geo?`<span class="badge stay">${t("away")}${distKm(State.geo,s).toFixed(distKm(State.geo,s)<10?1:0)} ${t("km_away")}</span>`:"";
       const item=el(`<div class="list-item"><div class="ava">${s.emoji}</div>
         <div style="flex:1"><strong>${i+1}. ${esc(L(s.title))}</strong> ${dist}
-          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
-            <a class="btn sm teal" href="${gmapsDir(s.lat,s.lng)}" target="_blank" rel="noopener">${t("go_here")}</a>
-            <a class="btn sm secondary" href="${gmapsView(s.lat,s.lng)}" target="_blank" rel="noopener">${t("open_map")}</a>
+          <div style="margin-top:8px">
+            <a class="btn sm teal" href="${gmapsDir(s.lat,s.lng)}" target="_blank" rel="noopener" style="display:inline-block">${t("go_here")}</a>
           </div></div></div>`);
       box.appendChild(item);
     });
