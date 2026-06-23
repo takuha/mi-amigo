@@ -218,6 +218,10 @@ Object.assign(I18N.es,{ admin_section:"Crear próxima mazmorra (admin)", admin_o
 Object.assign(I18N.ja,{ contact_to:"お問い合わせ先", contact_section:"お問い合わせ", contact_note:"ガイド申込・ご意見・ご質問はこちらへ。運営に届きます。", fb_cta:"💬 なんでも言いたいボックス", fb_title:"なんでも言いたいボックス", fb_sub:"ご意見・ご要望・お問い合わせ、なんでもどうぞ。運営に届きます。", fb_msg:"メッセージ", fb_msg_ph:"メッセージを入力…", fb_send:"📩 送信する", fb_need:"メッセージを入力してください" });
 Object.assign(I18N.en,{ contact_to:"Contact", contact_section:"Contact", contact_note:"Guide requests, feedback and questions — they reach our team.", fb_cta:"💬 Say anything", fb_title:"Say anything", fb_sub:"Feedback, requests, questions — anything goes. It reaches our team.", fb_msg:"Message", fb_msg_ph:"Type your message…", fb_send:"📩 Send", fb_need:"Please enter a message" });
 Object.assign(I18N.es,{ contact_to:"Contacto", contact_section:"Contacto", contact_note:"Solicitudes de guía, comentarios y preguntas — llegan a nuestro equipo.", fb_cta:"💬 Buzón de comentarios", fb_title:"Buzón de comentarios", fb_sub:"Comentarios, solicitudes, preguntas — lo que sea. Llega a nuestro equipo.", fb_msg:"Mensaje", fb_msg_ph:"Escribe tu mensaje…", fb_send:"📩 Enviar", fb_need:"Escribe un mensaje" });
+// 追加i18n（B2：本物の電話SMS認証）
+Object.assign(I18N.ja,{ sms_sending:"SMS送信中…", sms_sent_real:"SMSを送信しました📩", code_real_hint:"SMSで届いた6桁コードを入力してください", err_sms:"SMS送信に失敗しました。番号（国番号付き）をご確認ください", verifying:"確認中…" });
+Object.assign(I18N.en,{ sms_sending:"Sending SMS…", sms_sent_real:"SMS sent 📩", code_real_hint:"Enter the 6-digit code from the SMS", err_sms:"Couldn't send SMS. Check the number (with country code).", verifying:"Verifying…" });
+Object.assign(I18N.es,{ sms_sending:"Enviando SMS…", sms_sent_real:"SMS enviado 📩", code_real_hint:"Ingresa el código de 6 dígitos del SMS", err_sms:"No se pudo enviar el SMS. Revisa el número (con código de país).", verifying:"Verificando…" });
 // 追加i18n（B3：申込・問い合わせのクラウド保存＋admin一覧）
 Object.assign(I18N.ja,{ sub_sent:"送信しました。運営に届きました ✅", subs_section:"📥 申込・問い合わせ一覧", subs_empty:"まだ申込・問い合わせはありません。", subs_offline:"クラウド未接続のため一覧は表示できません。", t_guide:"ガイド申込", t_feedback:"ご意見", t_biz:"広告掲載" });
 Object.assign(I18N.en,{ sub_sent:"Sent — it reached our team ✅", subs_section:"📥 Submissions", subs_empty:"No submissions yet.", subs_offline:"Not connected to the cloud — list unavailable.", t_guide:"Guide request", t_feedback:"Feedback", t_biz:"Advertising" });
@@ -336,9 +340,21 @@ function viewAuth(){
       <label class="field-label">${t("choose_lang")}</label>
       <div id="authLang"></div>
       <div id="authBody" style="margin-top:18px"></div>
+      <div id="recaptcha-container"></div>
     </div></div>`);
   $("#authLang",wrap).appendChild(langSeg(()=>render()));
   const body=$("#authBody",wrap);
+  // 本物の電話SMS認証（Firebase）。Firebase未設定/未接続時はデモ（画面表示コード）にフォールバック
+  let realMode=false, phoneConfirm=null, recaptcha=null;
+  function ensureRecaptcha(){ if(!recaptcha) recaptcha=new firebase.auth.RecaptchaVerifier("recaptcha-container",{ size:"invisible" }); return recaptcha; }
+  function finishLogin(){
+    const all=DB.get(K.users,{}); let u=all[pendingKey]; const isNew=!u;
+    if(isNew){ u={ id:pendingKey, email:pendingKey, phone:pendingDisplay, name:(pendingNick.trim()||pendingDisplay) }; all[pendingKey]=u; DB.set(K.users,all); }
+    DB.set(K.session,pendingKey); State.user=u;
+    if(isNew){ const nu=Org.onRegister(pendingKey, u.name, State.pendingRef); if(nu) State.user=nu; State.pendingRef=null; localStorage.removeItem(K.ref); }
+    State.view="mypage"; toast(`${t("welcome")}, ${State.user.name}!`); render();
+    if(isNew) showReferralSheet(State.user, true);
+  }
   function renderPhone(){
     const refBanner = State.pendingRef
       ? `<div class="card" style="background:#e1f5ee;border:none;margin-bottom:12px"><div class="card-body" style="padding:10px 12px">🎟️ ${orgT("joined_via")}：<b style="color:var(--teal)">${esc(State.pendingRef)}</b></div></div>`
@@ -351,27 +367,41 @@ function viewAuth(){
       <p class="error" id="aErr"></p>
       <button class="btn" id="sendBtn">${t("send_code")}</button>
       <p class="hint" style="margin-top:12px">${t("sms_note")}</p>`;
-    $("#sendBtn",body).onclick=()=>{ const num=$("#phone",body).value.trim(); if(!num){ $("#aErr",body).textContent=t("err_phone"); return; }
+    $("#sendBtn",body).onclick=async ()=>{ const num=$("#phone",body).value.trim(); if(!num){ $("#aErr",body).textContent=t("err_phone"); return; }
       const dial=$("#dial",body).value; pendingDisplay=dial+" "+num; pendingKey=normPhone(dial,num); pendingNick=$("#nick",body).value;
-      sentCode=String(Math.floor(100000+Math.random()*900000)); toast(t("code_sent")); renderCode(); };
+      const btn=$("#sendBtn",body); $("#aErr",body).textContent="";
+      if(Cloud.ready && Cloud.auth){
+        btn.disabled=true; btn.textContent=t("sms_sending");
+        try{ phoneConfirm=await Cloud.auth.signInWithPhoneNumber(pendingKey, ensureRecaptcha()); realMode=true; toast(t("sms_sent_real")); renderCode(); return; }
+        catch(err){ console.warn("[Auth] signInWithPhoneNumber失敗", err); $("#aErr",body).textContent=t("err_sms"); btn.disabled=false; btn.textContent=t("send_code"); try{ recaptcha&&recaptcha.clear(); }catch{} recaptcha=null; return; }
+      }
+      realMode=false; sentCode=String(Math.floor(100000+Math.random()*900000)); toast(t("code_sent")); renderCode();
+    };
   }
   function renderCode(){
-    body.innerHTML=`
-      <div class="card" style="background:#f3ece0;border:none;margin-bottom:14px"><div class="card-body">
+    const demoBox = realMode ? "" : `<div class="card" style="background:#f3ece0;border:none;margin-bottom:14px"><div class="card-body">
         <div class="muted" style="font-size:13px">📱 ${esc(pendingDisplay)}</div>
-        <div style="margin-top:6px;font-size:14px">${t("demo_code")}: <b style="font-size:22px;letter-spacing:4px;color:var(--terra)">${sentCode}</b></div></div></div>
+        <div style="margin-top:6px;font-size:14px">${t("demo_code")}: <b style="font-size:22px;letter-spacing:4px;color:var(--terra)">${sentCode}</b></div></div></div>`;
+    const realHint = realMode ? `<div class="card" style="background:#f3ece0;border:none;margin-bottom:14px"><div class="card-body"><div class="muted" style="font-size:13px">📱 ${esc(pendingDisplay)}</div><div style="margin-top:4px;font-size:13px">${t("code_real_hint")}</div></div></div>` : "";
+    body.innerHTML=`
+      ${demoBox}${realHint}
       <div class="field"><label>${t("code")}</label><input id="code" inputmode="numeric" maxlength="6" placeholder="${t("code_ph")}" /></div>
       <p class="error" id="aErr"></p>
       <button class="btn" id="verifyBtn">${t("verify")}</button>
       <button class="btn ghost" id="backBtn" style="margin-top:8px">${t("back")}</button>`;
-    $("#code",body).value=sentCode; // デモ：自動入力
-    $("#verifyBtn",body).onclick=()=>{ if($("#code",body).value.trim()!==sentCode){ $("#aErr",body).textContent=t("err_code"); return; }
-      const all=DB.get(K.users,{}); let u=all[pendingKey]; const isNew=!u;
-      if(isNew){ u={ id:pendingKey, email:pendingKey, phone:pendingDisplay, name:(pendingNick.trim()||pendingDisplay) }; all[pendingKey]=u; DB.set(K.users,all); }
-      DB.set(K.session,pendingKey); State.user=u;
-      if(isNew){ const nu=Org.onRegister(pendingKey, u.name, State.pendingRef); if(nu) State.user=nu; State.pendingRef=null; localStorage.removeItem(K.ref); }
-      State.view="mypage"; toast(`${t("welcome")}, ${State.user.name}!`); render();
-      if(isNew) showReferralSheet(State.user, true); };
+    if(!realMode) $("#code",body).value=sentCode; // デモ：自動入力
+    $("#verifyBtn",body).onclick=async ()=>{
+      const code=$("#code",body).value.trim(); $("#aErr",body).textContent="";
+      if(realMode){
+        if(!phoneConfirm){ $("#aErr",body).textContent=t("err_code"); return; }
+        const btn=$("#verifyBtn",body); btn.disabled=true; btn.textContent=t("verifying");
+        try{ await phoneConfirm.confirm(code); finishLogin(); }
+        catch(err){ console.warn("[Auth] confirm失敗", err); $("#aErr",body).textContent=t("err_code"); btn.disabled=false; btn.textContent=t("verify"); }
+      } else {
+        if(code!==sentCode){ $("#aErr",body).textContent=t("err_code"); return; }
+        finishLogin();
+      }
+    };
     $("#backBtn",body).onclick=renderPhone;
   }
   renderPhone();
@@ -873,13 +903,14 @@ function onCloudVotesChanged(){
 }
 // クラウド投票エンジン（Firestoreの votes コレクションを全員で共有・リアルタイム購読）
 const Cloud = {
-  ready:false, db:null, uid:null, counts:{}, mine:new Set(), loaded:false,
+  ready:false, db:null, auth:null, uid:null, counts:{}, mine:new Set(), loaded:false,
   init(){
     try{
       if(!window.FIREBASE_CONFIG || !window.firebase || !firebase.initializeApp) return;
       firebase.initializeApp(window.FIREBASE_CONFIG);
       this.db=firebase.firestore(); this.uid=cloudUid(); this.ready=true;
-      console.log("[Cloud] Firebase 接続OK:", window.FIREBASE_CONFIG.projectId);
+      try{ if(firebase.auth){ this.auth=firebase.auth(); this.auth.useDeviceLanguage(); } }catch(e){ this.auth=null; }
+      console.log("[Cloud] Firebase 接続OK:", window.FIREBASE_CONFIG.projectId, "auth:", !!this.auth);
       this.watch();
     }catch(e){ console.warn("[Cloud] init失敗（端末内デモで継続）", e); this.ready=false; }
   },
