@@ -143,9 +143,9 @@ async function syncMyOrg(){
 
 /* 紹介まわりの簡易多言語 */
 const ORG_I18N = {
-  ja:{ your_no:"あなたの会員番号", your_code:"あなたの紹介コード", invite_title:"友だちを招待", invite_sub:"このコード/URLから登録した人があなたの組織に入ります", copy:"コピー", copied:"コピーしました", share:"共有", org_chart:"組織図", members:"会員数", binary:"バイナリー（配置）", unilevel:"ユニレベル（紹介）", welcome_code:"あなたの紹介コードができました！", introduced_by:"紹介者", joined_via:"招待コードで登録します" },
-  en:{ your_no:"Your member no.", your_code:"Your referral code", invite_title:"Invite friends", invite_sub:"People who join via this code/URL enter your organization", copy:"Copy", copied:"Copied", share:"Share", org_chart:"Org chart", members:"Members", binary:"Binary (placement)", unilevel:"Unilevel (referral)", introduced_by:"Referred by", welcome_code:"Your referral code is ready!", joined_via:"Joining with an invite code" },
-  es:{ your_no:"Tu nº de miembro", your_code:"Tu código de invitación", invite_title:"Invita a amigos", invite_sub:"Quien se una con este código/URL entra en tu organización", copy:"Copiar", copied:"Copiado", share:"Compartir", org_chart:"Organigrama", members:"Miembros", binary:"Binario (colocación)", unilevel:"Unilevel (referidos)", introduced_by:"Invitado por", welcome_code:"¡Tu código de invitación está listo!", joined_via:"Te registras con un código" },
+  ja:{ your_no:"あなたの会員番号", your_code:"あなたの紹介コード", invite_title:"友だちを招待", invite_sub:"このコード/URLから登録した人が、あなたのアミーゴ（紹介した仲間）になります", copy:"コピー", copied:"コピーしました", share:"共有", org_chart:"組織図", members:"会員数", binary:"バイナリー（配置）", unilevel:"ユニレベル（紹介）", welcome_code:"あなたの紹介コードができました！", introduced_by:"紹介者", joined_via:"招待コードで登録します" },
+  en:{ your_no:"Your member no.", your_code:"Your referral code", invite_title:"Invite friends", invite_sub:"People who join via this code/URL become your amigos", copy:"Copy", copied:"Copied", share:"Share", org_chart:"Org chart", members:"Members", binary:"Binary (placement)", unilevel:"Unilevel (referral)", introduced_by:"Referred by", welcome_code:"Your referral code is ready!", joined_via:"Joining with an invite code" },
+  es:{ your_no:"Tu nº de miembro", your_code:"Tu código de invitación", invite_title:"Invita a amigos", invite_sub:"Quien se una con este código/URL se vuelve tu amigo", copy:"Copiar", copied:"Copiado", share:"Compartir", org_chart:"Organigrama", members:"Miembros", binary:"Binario (colocación)", unilevel:"Unilevel (referidos)", introduced_by:"Invitado por", welcome_code:"¡Tu código de invitación está listo!", joined_via:"Te registras con un código" },
 };
 function orgT(k){ return (ORG_I18N[State.lang]||ORG_I18N.ja)[k] || ORG_I18N.ja[k] || k; }
 function copyText(s){ if(navigator.clipboard){ navigator.clipboard.writeText(s).then(()=>toast(orgT("copied"))).catch(()=>toast(s)); } else toast(s); }
@@ -1423,6 +1423,12 @@ function viewMyPage(){
 }
 
 /* ---------- 起動 ---------- */
+// ?reset=1 でこの端末内の登録情報（会員・組織・ログイン）をクリアして真っさらに起動。
+// （クラウドの共有組織は消えない＝端末内のテスト残骸だけを消す用）
+if(new URLSearchParams(location.search).get("reset")){
+  ["ma_users","ma_org","ma_session","ma_pending_ref"].forEach(k=>localStorage.removeItem(k));
+  location.replace(location.origin+location.pathname);
+}
 document.querySelectorAll("#tabbar .tab").forEach(tb=>{ tb.onclick=()=>{ stopSpeak(); State.chatGroup=null; State.view=tb.dataset.view; render(); }; });
 State.user=Auth.current();
 // 紹介URL ?ref=CODE を取り込み（多段の登録フローをまたいで保持）
