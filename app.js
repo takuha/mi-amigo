@@ -85,9 +85,9 @@ const Org = {
   children(key){ const o={}; for(const u of Object.values(this.users())){ if(u.parentKey===key && u.position) o[u.position]=this.keyOf(u); } return o; },
   introducees(key){ return Object.values(this.users()).filter(u=>u.introKey===key).sort((a,b)=>a.member_id-b.member_id).map(u=>this.keyOf(u)); },
   refUrl(code){ return location.origin+location.pathname+"?ref="+encodeURIComponent(code); },
-  // 新規登録：cloudがあれば Firestore トランザクションで全員共有ツリーに追加。失敗時はローカル。
+  // 新規登録：電話認証済み(currentUser有り)なら Firestore トランザクションで全員共有ツリーに追加。失敗時はローカル。
   async register(localKey, name, refCode){
-    if(this.cloud && Cloud.db){
+    if(Cloud.db && Cloud.auth && Cloud.auth.currentUser){
       try{ return await this.registerCloud(localKey, name, refCode); }
       catch(e){ console.warn("[Org] クラウド登録に失敗→ローカルにフォールバック", e); }
     }
@@ -132,7 +132,7 @@ function orgKeyOf(){ const u=userRec(); return (u&&(u.okey||u.key||u.email))||""
 function mergeMyOrg(nu){
   if(!nu||!State.user) return;
   const all=DB.get(K.users,{}); const lu=all[State.user.email]||State.user;
-  Object.assign(lu,{okey:(Org.cloud?nu.key:State.user.email), member_id:nu.member_id, role:nu.role, introKey:nu.introKey, parentKey:nu.parentKey, position:nu.position, refCode:nu.refCode});
+  Object.assign(lu,{okey:nu.key||State.user.email, member_id:nu.member_id, role:nu.role, introKey:nu.introKey, parentKey:nu.parentKey, position:nu.position, refCode:nu.refCode});
   all[State.user.email]=lu; DB.set(K.users,all); State.user=lu;
 }
 // クラウドの共有ツリーから、自分の組織フィールドをローカルへ同期（他端末の更新も反映）
@@ -969,18 +969,20 @@ const Cloud = {
       try{ if(firebase.messaging){ this.messaging=firebase.messaging(); this.messaging.onMessage(p=>{ const n=(p&&p.notification)||{}; pushNotif([n.title,n.body].filter(Boolean).join("：")||"📣"); }); } }catch(e){ this.messaging=null; }
       console.log("[Cloud] Firebase 接続OK:", window.FIREBASE_CONFIG.projectId, "auth:", !!this.auth, "msg:", !!this.messaging);
       this.watch();
-      this.watchOrg();
+      // 組織ツリーの読取はルール上ログイン必須。ログイン状態が確定してから購読を開始する。
+      if(this.auth){ this.auth.onAuthStateChanged(u=>{ if(u) this.watchOrg(); }); }
     }catch(e){ console.warn("[Cloud] init失敗（端末内デモで継続）", e); this.ready=false; }
   },
-  // 組織ツリー（全員共有）を Firestore の単一ドキュメント org/tree で購読・ミラー
+  // 組織ツリー（全員共有）を Firestore の単一ドキュメント org/tree で購読・ミラー（ログイン後に呼ぶ）
   watchOrg(){
+    if(this._orgUnsub) return;            // 二重購読を防止
     Org.cloud=true;
-    this.db.collection("org").doc("tree").onSnapshot(snap=>{
+    this._orgUnsub=this.db.collection("org").doc("tree").onSnapshot(snap=>{
       Org._tree = snap.exists ? snap.data() : orgEmptyTree();
       if(!Org._tree.members) Org._tree.members={};
       if(!Org._tree.codeIndex) Org._tree.codeIndex={};
       syncMyOrg().finally(()=>{ try{ render(); }catch{} });
-    }, err=>{ console.warn("[Org] tree購読エラー（ローカルに切替）", err); Org.cloud=false; try{ render(); }catch{} });
+    }, err=>{ console.warn("[Org] tree購読エラー（ローカルに切替）", err); Org.cloud=false; this._orgUnsub=null; try{ render(); }catch{} });
   },
   watch(){
     this.db.collection("votes").onSnapshot(snap=>{
