@@ -288,6 +288,10 @@ Object.assign(I18N.es,{ sub_sent:"Enviado — llegó a nuestro equipo ✅", subs
 Object.assign(I18N.ja,{ phone:"電話番号", phone_ph:"電話番号（ハイフン無し）", send_code:"認証コードを送信", code:"認証コード", code_ph:"6桁のコード", verify:"確認して続ける", nick_new:"お名前 / ニックネーム（新規の方）", demo_code:"デモ用コード", sms_note:"SMSで6桁の認証コードをお送りします。", code_sent:"認証コードを送信しました", err_phone:"電話番号を入力してください", err_code:"コードが正しくありません" });
 Object.assign(I18N.en,{ phone:"Phone number", phone_ph:"Phone (no dashes)", send_code:"Send code", code:"Verification code", code_ph:"6-digit code", verify:"Verify & continue", nick_new:"Name / Nickname (new users)", demo_code:"Demo code", sms_note:"We'll text you a 6-digit verification code.", code_sent:"Code sent", err_phone:"Enter your phone number", err_code:"Incorrect code" });
 Object.assign(I18N.es,{ phone:"Número de teléfono", phone_ph:"Teléfono (sin guiones)", send_code:"Enviar código", code:"Código de verificación", code_ph:"Código de 6 dígitos", verify:"Verificar y continuar", nick_new:"Nombre / Apodo (nuevos)", demo_code:"Código demo", sms_note:"Te enviaremos un código de 6 dígitos por SMS.", code_sent:"Código enviado", err_phone:"Ingresa tu número", err_code:"Código incorrecto" });
+// 追加i18n（Google／メールリンク認証＝SMSが届かない人向けの入口）
+Object.assign(I18N.ja,{ continue_google:"Googleで続ける", continue_email:"メールで続ける", or_phone:"または電話番号で", email_label:"メールアドレス", email_ph:"you@email.com", email_send_link:"ログインリンクを送る", email_note:"パスワード不要。届いたメールのリンクを開くだけでログインできます。", email_sent_title:"メールを確認してください", email_sent_body:"ログインリンクを送りました📩 メール内のリンクを開いてください：", email_err:"メールの送信に失敗しました。アドレスをご確認ください。", err_email:"メールアドレスを入力してください", google_err:"Googleログインに失敗しました。もう一度お試しください。", signing_in:"ログイン中…", email_confirm_prompt:"確認のためメールアドレスを入力してください" });
+Object.assign(I18N.en,{ continue_google:"Continue with Google", continue_email:"Continue with email", or_phone:"or with your phone", email_label:"Email", email_ph:"you@email.com", email_send_link:"Send login link", email_note:"No password. Just open the link we email you to sign in.", email_sent_title:"Check your email", email_sent_body:"We sent a login link 📩 Open the link in the email:", email_err:"Couldn't send the email. Please check the address.", err_email:"Enter your email", google_err:"Google sign-in failed. Please try again.", signing_in:"Signing in…", email_confirm_prompt:"Please confirm your email address" });
+Object.assign(I18N.es,{ continue_google:"Continuar con Google", continue_email:"Continuar con correo", or_phone:"o con tu teléfono", email_label:"Correo", email_ph:"tu@correo.com", email_send_link:"Enviar enlace de acceso", email_note:"Sin contraseña. Solo abre el enlace que te enviamos por correo.", email_sent_title:"Revisa tu correo", email_sent_body:"Te enviamos un enlace 📩 Ábrelo en el correo:", email_err:"No se pudo enviar el correo. Revisa la dirección.", err_email:"Ingresa tu correo", google_err:"Error al entrar con Google. Inténtalo otra vez.", signing_in:"Entrando…", email_confirm_prompt:"Confirma tu correo electrónico" });
 const DIAL={ JP:"+81",GT:"+502",US:"+1",CA:"+1",MX:"+52",ES:"+34",FR:"+33",DE:"+49",GB:"+44",IT:"+39",NL:"+31",CH:"+41",PT:"+351",IE:"+353",SE:"+46",NO:"+47",AU:"+61",NZ:"+64",BR:"+55",AR:"+54",CL:"+56",CO:"+57",PE:"+51",CR:"+506",SV:"+503",HN:"+504",NI:"+505",BZ:"+501",KR:"+82",CN:"+86",TW:"+886",TH:"+66",IN:"+91",IL:"+972",ZA:"+27",PL:"+48" };
 
 // 隠しタブ「なかま」解禁に必要な紹介人数（アミーゴを何人紹介したら入れるか）
@@ -387,6 +391,51 @@ function langSeg(onPick){
 
 /* ---------- 認証（電話番号＋認証コード／言語選択を最初に） ---------- */
 function normPhone(dial,num){ return (dial+num).replace(/[^0-9+]/g,""); }
+// ソーシャル／メールリンクの共通ログイン：Firebaseユーザー → 端末セッション＋組織ツリー登録
+// （電話SMSが届かない人の入口。組織キーはメールアドレスに揃えるので紹介ツリー・資産設計はそのまま動く）
+async function socialLogin(fbUser, nickOverride){
+  if(!fbUser) return;
+  const key=(fbUser.email||fbUser.uid||"").toLowerCase();
+  if(!key) return;
+  const all=DB.get(K.users,{}); let u=all[key]; const isNew=!u || !u.member_id;
+  if(!all[key]){
+    u={ id:key, email:key, phone:"", name:((nickOverride&&nickOverride.trim())||fbUser.displayName||fbUser.email||"Amigo"), photo:fbUser.photoURL||"" };
+    all[key]=u; DB.set(K.users,all);
+  }
+  DB.set(K.session,key); State.user=all[key];
+  if(isNew){
+    const ref=State.pendingRef||localStorage.getItem(K.ref)||null;
+    const nu=await Org.register(key, State.user.name, ref);
+    if(nu) mergeMyOrg(nu);
+    State.pendingRef=null; localStorage.removeItem(K.ref);
+  }
+  State.view="mypage"; toast(`${t("welcome")}, ${State.user.name}!`); render();
+  if(isNew && State.user.member_id) showReferralSheet(State.user, true);
+}
+// ソーシャル（リダイレクト）／メールリンクからの復帰を起動時に完了させる
+async function completeRedirectLogins(){
+  if(!(Cloud.ready && Cloud.auth)) return;
+  try{
+    if(Cloud.auth.isSignInWithEmailLink && Cloud.auth.isSignInWithEmailLink(location.href)){
+      let email=localStorage.getItem("ma_email_signin");
+      if(!email) email=window.prompt(t("email_confirm_prompt"));
+      if(email){
+        const res=await Cloud.auth.signInWithEmailLink(email.trim().toLowerCase(), location.href);
+        const nick=localStorage.getItem("ma_nick_signin")||"";
+        localStorage.removeItem("ma_email_signin"); localStorage.removeItem("ma_nick_signin");
+        history.replaceState({},"",location.pathname+(location.hash||""));
+        await socialLogin(res.user, nick);
+      }
+    }
+  }catch(e){ console.warn("[Auth] メールリンク完了に失敗", e); }
+  try{
+    const res=await Cloud.auth.getRedirectResult();
+    if(res && res.user && !DB.get(K.session,null)){
+      const nick=localStorage.getItem("ma_nick_signin")||""; localStorage.removeItem("ma_nick_signin");
+      await socialLogin(res.user, nick);
+    }
+  }catch(e){ console.warn("[Auth] リダイレクト完了に失敗", e); }
+}
 function viewAuth(){
   let sentCode=null, pendingKey=null, pendingDisplay=null, pendingNick="";
   const dialOpts=DATA.countries.map(c=>`<option value="${DIAL[c.c]||""}" ${c.c==="JP"?"selected":""}>${c.f} ${DIAL[c.c]||""}</option>`).join("");
@@ -412,18 +461,66 @@ function viewAuth(){
     State.view="mypage"; toast(`${t("welcome")}, ${State.user.name}!`); render();
     if(isNew && State.user.member_id) showReferralSheet(State.user, true);
   }
-  function renderPhone(){
-    const refBanner = State.pendingRef
+  function refBannerHTML(){
+    return State.pendingRef
       ? `<div class="card" style="background:#e1f5ee;border:none;margin-bottom:12px"><div class="card-body" style="padding:10px 12px">🎟️ ${orgT("joined_via")}：<b style="color:var(--teal)">${esc(State.pendingRef)}</b></div></div>`
       : "";
+  }
+  // メールリンク（パスワードレス）：届いたメールのリンクを開くだけでログイン
+  function renderEmail(){
     body.innerHTML=`
-      ${refBanner}
+      ${refBannerHTML()}
+      <div class="field"><label>${t("email_label")}</label><input id="email" type="email" inputmode="email" placeholder="${t("email_ph")}" /></div>
+      <div class="field"><label>${t("nick_new")}</label><input id="enick" placeholder="Taku" /></div>
+      <p class="error" id="aErr"></p>
+      <button class="btn" id="emailSendBtn">${t("email_send_link")}</button>
+      <button class="btn ghost" id="ebackBtn" style="margin-top:8px">${t("back")}</button>
+      <p class="hint" style="margin-top:12px">${t("email_note")}</p>`;
+    $("#ebackBtn",body).onclick=renderPhone;
+    $("#emailSendBtn",body).onclick=async ()=>{
+      const email=$("#email",body).value.trim().toLowerCase();
+      if(!email || !/.+@.+\..+/.test(email)){ $("#aErr",body).textContent=t("err_email"); return; }
+      const btn=$("#emailSendBtn",body); btn.disabled=true; btn.textContent=t("signing_in"); $("#aErr",body).textContent="";
+      try{
+        const acs={ url:location.origin+location.pathname+(State.pendingRef?("?ref="+encodeURIComponent(State.pendingRef)):""), handleCodeInApp:true };
+        await Cloud.auth.sendSignInLinkToEmail(email, acs);
+        localStorage.setItem("ma_email_signin", email);
+        localStorage.setItem("ma_nick_signin", $("#enick",body).value.trim());
+        body.innerHTML=`<div class="card" style="background:#e1f5ee;border:none"><div class="card-body" style="text-align:center;padding:22px">
+          <div style="font-size:40px">📩</div><h3 style="margin:10px 0 6px">${t("email_sent_title")}</h3>
+          <p class="muted" style="font-size:14px">${t("email_sent_body")}<br><b>${esc(email)}</b></p></div></div>
+          <button class="btn ghost" id="ebackBtn2" style="margin-top:14px">${t("back")}</button>`;
+        $("#ebackBtn2",body).onclick=renderPhone;
+      }catch(err){ console.warn("[Auth] メールリンク送信失敗", err); $("#aErr",body).textContent=t("email_err"); btn.disabled=false; btn.textContent=t("email_send_link"); }
+    };
+  }
+  function renderPhone(){
+    const social = (Cloud.ready && Cloud.auth) ? `
+      <button class="btn btn-google" id="googleBtn"><span style="font-weight:800;color:#4285F4">G</span>&nbsp;${t("continue_google")}</button>
+      <button class="btn ghost" id="emailBtn" style="margin-top:10px">✉️ ${t("continue_email")}</button>
+      <div class="or-divider"><span>${t("or_phone")}</span></div>` : "";
+    body.innerHTML=`
+      ${refBannerHTML()}
+      ${social}
       <div class="field"><label>${t("phone")}</label>
         <div class="row" style="gap:8px"><select id="dial" style="width:135px">${dialOpts}</select><input id="phone" type="tel" inputmode="tel" style="flex:1" placeholder="${t("phone_ph")}" /></div></div>
       <div class="field"><label>${t("nick_new")}</label><input id="nick" placeholder="Taku" /></div>
       <p class="error" id="aErr"></p>
       <button class="btn" id="sendBtn">${t("send_code")}</button>
       <p class="hint" style="margin-top:12px">${t("sms_note")}</p>`;
+    if(Cloud.ready && Cloud.auth){
+      $("#googleBtn",body).onclick=async ()=>{
+        const btn=$("#googleBtn",body); btn.disabled=true; const orig=btn.innerHTML; btn.textContent=t("signing_in"); $("#aErr",body).textContent="";
+        try{
+          const provider=new firebase.auth.GoogleAuthProvider();
+          let res=null;
+          try{ res=await Cloud.auth.signInWithPopup(provider); }
+          catch(popupErr){ console.warn("[Auth] popup失敗→redirect", popupErr); await Cloud.auth.signInWithRedirect(provider); return; }
+          await socialLogin(res.user);
+        }catch(err){ console.warn("[Auth] Googleログイン失敗", err); $("#aErr",body).textContent=t("google_err"); btn.disabled=false; btn.innerHTML=orig; }
+      };
+      $("#emailBtn",body).onclick=renderEmail;
+    }
     $("#sendBtn",body).onclick=async ()=>{ const num=$("#phone",body).value.trim(); if(!num){ $("#aErr",body).textContent=t("err_phone"); return; }
       const dial=$("#dial",body).value; pendingDisplay=dial+" "+num; pendingKey=normPhone(dial,num); pendingNick=$("#nick",body).value;
       const btn=$("#sendBtn",body); $("#aErr",body).textContent="";
@@ -1438,5 +1535,6 @@ if(State.pendingRef) localStorage.setItem(K.ref, State.pendingRef);
 if(/^#(business|ads)$/.test(location.hash)) State.business=true;
 Cloud.init(); // Firebase接続（設定があればクラウド投票＋共有組織が有効化）
 render();
+completeRedirectLogins(); // Google（リダイレクト）／メールリンクからの復帰ログインを完了
 // 既ログインで組織フィールド未付与なら、クラウド接続を少し待ってから補完（通常はここを通らない）
 setTimeout(()=>{ if(State.user && !State.user.member_id){ Org.register(State.user.email, State.user.name, State.pendingRef).then(nu=>{ if(nu){ mergeMyOrg(nu); render(); } }); } }, 1600);

@@ -256,3 +256,10 @@ ul.clean2 li::before{ content:"✓"; color:var(--teal); font-weight:800; positio
 .orgnode.n-amber{ background:#faeeda; color:#854f0b; }
 .orgnode.n-teal{ background:#e1f5ee; color:#0f6e56; }
 .orgnode.n-purple{ background:#eeedfe; color:#534ab7; }
+
+/* ログイン手段（Google／メール）— SMSが届かない人の入口 */
+.or-divider{ display:flex; align-items:center; text-align:center; color:#9a8f80; font-size:12px; margin:18px 0 14px; }
+.or-divider::before, .or-divider::after{ content:""; flex:1; height:1px; background:#e6ddd0; }
+.or-divider span{ padding:0 12px; }
+.btn-google{ background:#fff; color:#222; border:1px solid #dcdcdc; }
+.btn-google:active{ background:#f5f5f5; }
