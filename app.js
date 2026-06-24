@@ -30,59 +30,116 @@ const Auth = {
  * introKey=紹介ライン(ユニレベル) / parentKey+position=配置(バイナリー)。
  * ※ データは localStorage（この端末内）。複数端末をまたぐ本番組織には
  *   binary_tree_system の API バックエンドをホストして接続する（下の ORG_API 参照）。 */
+/* --- ツリー操作の純関数（cloud=Firestoreドキュメント / local=localStorage の双方で共用） --- */
+function orgEmptyTree(){ return {seq:0, rootKey:null, codeIndex:{}, members:{}}; }
+function orgChildrenOf(tree, key){ const o={}; for(const k in tree.members){ const u=tree.members[k]; if(u.parentKey===key && u.position) o[u.position]=k; } return o; }
+function orgPlace(tree, introKey){ // 紹介者配下を BFS して left→right の空き枠（スピルオーバー）
+  if(!introKey) return {parentKey:null, position:null};
+  const q=[introKey];
+  while(q.length){ const node=q.shift(); const ch=orgChildrenOf(tree,node);
+    if(!ch.left) return {parentKey:node, position:"left"};
+    if(!ch.right) return {parentKey:node, position:"right"};
+    q.push(ch.left); q.push(ch.right); }
+  return {parentKey:introKey, position:"left"};
+}
+function orgGenCode(tree, vanity){
+  if(vanity){ const v=(vanity||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,8); if(v && !tree.codeIndex[v]) return v; }
+  const AB="ABCDEFGHJKMNPQRSTUVWXYZ23456789"; let c;
+  do{ c="AMG-"+Array.from({length:6},()=>AB[Math.floor(Math.random()*AB.length)]).join(""); }while(tree.codeIndex[c]);
+  return c;
+}
+// 新規メンバーを tree に割り当て（採番・直紹介line・オートバイナリー配置・紹介コード発行）。tree を破壊的更新し rec を返す。
+function orgAssign(tree, key, name, refCode){
+  if(!tree.members) tree.members={}; if(!tree.codeIndex) tree.codeIndex={};
+  if(tree.members[key] && tree.members[key].member_id) return tree.members[key]; // 既に登録済み（冪等）
+  let introKey=null, parentKey=null, position=null, role="member";
+  if(!tree.rootKey){ tree.rootKey=key; role="admin"; }                 // 1番＝ルート＝TAKUHA
+  else {
+    const code=(refCode||"").trim().toUpperCase();
+    introKey = (code && tree.codeIndex[code]) ? tree.codeIndex[code] : tree.rootKey;  // ref無し→ルート(TAKUHA)の直紹介
+    const slot=orgPlace(tree, introKey); parentKey=slot.parentKey; position=slot.position;
+  }
+  tree.seq=(tree.seq||0)+1;
+  const member_id=tree.seq;
+  const newCode=orgGenCode(tree, member_id===1 ? (name||"") : "");      // 1番だけ名前ベースの覚えやすいコード
+  const rec={ key, name:name||"", member_id, role, introKey, parentKey, position, refCode:newCode };
+  tree.members[key]=rec; tree.codeIndex[newCode]=key;
+  return rec;
+}
+
+/* ---------- 組織（オートバイナリー＋紹介コード）：全ユーザー共有 ----------
+ * 最初に登録した人 = 会員番号1番 = ルート（admin）＝ TAKUHA。
+ * 紹介コード(?ref)なしで登録 → ルート(TAKUHA)の直紹介。ありなら、その持ち主の直紹介。
+ * 配置はオートバイナリー（BFSスピルオーバー）。
+ * 保存先：Firebaseがあれば Firestore の単一ドキュメント org/tree（全端末で1つの組織）。
+ *         無い/繋がらない時は localStorage（端末内）にフォールバック。
+ * プライバシー：共有ツリーのキーは電話番号そのものではなく sha256(電話番号)。 */
 const Org = {
-  meta(){ return DB.get(K.org, {seq:0, rootKey:null, codeIndex:{}}); },
-  saveMeta(m){ DB.set(K.org, m); },
-  users(){ return DB.get(K.users,{}); },
+  cloud:false, _tree:null,
+  meta(){ if(this.cloud){ const t=this._tree||orgEmptyTree(); return {seq:t.seq, rootKey:t.rootKey, codeIndex:t.codeIndex||{}}; } return DB.get(K.org,{seq:0,rootKey:null,codeIndex:{}}); },
+  users(){ if(this.cloud){ return (this._tree&&this._tree.members)||{}; } return DB.get(K.users,{}); },
   rec(key){ return this.users()[key]||null; },
+  keyOf(u){ return u.key || u.email; },
   byCode(code){ const m=this.meta(); const k=m.codeIndex[(code||"").trim().toUpperCase()]; return k?this.rec(k):null; },
   count(){ return Object.values(this.users()).filter(u=>u.member_id).length; },
-  children(key){ const o={}; for(const u of Object.values(this.users())){ if(u.parentKey===key && u.position) o[u.position]=u.email; } return o; },
-  introducees(key){ return Object.values(this.users()).filter(u=>u.introKey===key).sort((a,b)=>a.member_id-b.member_id).map(u=>u.email); },
-  genCode(vanity){
-    const m=this.meta();
-    if(vanity){ const v=(vanity||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,8); if(v && !m.codeIndex[v]) return v; }
-    const AB="ABCDEFGHJKMNPQRSTUVWXYZ23456789"; let c;
-    do{ c="AMG-"+Array.from({length:6},()=>AB[Math.floor(Math.random()*AB.length)]).join(""); }while(m.codeIndex[c]);
-    return c;
-  },
-  place(introKey){ // 紹介者配下を BFS して left→right の空き枠を返す（スピルオーバー）
-    if(!introKey) return {parentKey:null, position:null};
-    const q=[introKey];
-    while(q.length){ const node=q.shift(); const ch=this.children(node);
-      if(!ch.left) return {parentKey:node, position:"left"};
-      if(!ch.right) return {parentKey:node, position:"right"};
-      q.push(ch.left); q.push(ch.right); }
-    return {parentKey:introKey, position:"left"};
-  },
-  onRegister(key, name, refCode){ // 新規登録時に組織フィールドを付与
-    const all=this.users(); const u=all[key]; if(!u) return null;
-    if(u.member_id) return u; // 既に組織化済み
-    const m=this.meta();
-    let introKey=null, parentKey=null, position=null;
-    if(!m.rootKey){ m.rootKey=key; u.role="admin"; }            // 1番＝ルート＝権限あり
-    else {
-      const intro = refCode ? this.byCode(refCode) : this.rec(m.rootKey);
-      introKey = intro ? intro.email : m.rootKey;
-      const slot=this.place(introKey); parentKey=slot.parentKey; position=slot.position; u.role="member";
-    }
-    m.seq=(m.seq||0)+1; u.member_id=m.seq;
-    u.introKey=introKey; u.parentKey=parentKey; u.position=position;
-    u.refCode=this.genCode(u.member_id===1 ? (name||"") : ""); // 1番だけ名前ベースの覚えやすいコード
-    m.codeIndex[u.refCode]=key;
-    all[key]=u; DB.set(K.users,all); this.saveMeta(m);
-    return u;
-  },
+  children(key){ const o={}; for(const u of Object.values(this.users())){ if(u.parentKey===key && u.position) o[u.position]=this.keyOf(u); } return o; },
+  introducees(key){ return Object.values(this.users()).filter(u=>u.introKey===key).sort((a,b)=>a.member_id-b.member_id).map(u=>this.keyOf(u)); },
   refUrl(code){ return location.origin+location.pathname+"?ref="+encodeURIComponent(code); },
+  // 新規登録：cloudがあれば Firestore トランザクションで全員共有ツリーに追加。失敗時はローカル。
+  async register(localKey, name, refCode){
+    if(this.cloud && Cloud.db){
+      try{ return await this.registerCloud(localKey, name, refCode); }
+      catch(e){ console.warn("[Org] クラウド登録に失敗→ローカルにフォールバック", e); }
+    }
+    return this.registerLocal(localKey, name, refCode);
+  },
+  async registerCloud(localKey, name, refCode){
+    const hkey=await sha256(localKey);                  // 電話番号は保存せず sha256 をキーに
+    const ref=Cloud.db.collection("org").doc("tree");
+    let rec=null;
+    await Cloud.db.runTransaction(async tx=>{
+      const snap=await tx.get(ref);
+      const tree=snap.exists ? snap.data() : orgEmptyTree();
+      rec=orgAssign(tree, hkey, name, refCode);
+      tx.set(ref, tree);
+    });
+    return rec;
+  },
+  registerLocal(key, name, refCode){
+    const all=DB.get(K.users,{}); const u=all[key]; if(!u) return null;
+    if(u.member_id) return u;
+    const meta=DB.get(K.org,{seq:0,rootKey:null,codeIndex:{}});
+    const tree={seq:meta.seq, rootKey:meta.rootKey, codeIndex:{...meta.codeIndex}, members:{}};
+    for(const k in all){ const x=all[k]; if(x.member_id) tree.members[k]={key:k, name:x.name, member_id:x.member_id, role:x.role, introKey:x.introKey, parentKey:x.parentKey, position:x.position, refCode:x.refCode}; }
+    const rec=orgAssign(tree, key, name, refCode);
+    Object.assign(u, {key, member_id:rec.member_id, role:rec.role, introKey:rec.introKey, parentKey:rec.parentKey, position:rec.position, refCode:rec.refCode});
+    all[key]=u; DB.set(K.users,all);
+    DB.set(K.org, {seq:tree.seq, rootKey:tree.rootKey, codeIndex:tree.codeIndex});
+    return rec;
+  },
   binaryTree(){ const m=this.meta(); if(!m.rootKey) return null; const self=this;
-    const node=k=>{ const u=self.rec(k); const ch=self.children(k);
+    const node=k=>{ const u=self.rec(k); if(!u) return null; const ch=self.children(k);
       return {name:u.name, member_id:u.member_id, role:u.role, left:ch.left?node(ch.left):null, right:ch.right?node(ch.right):null}; };
     return node(m.rootKey); },
   unilevelTree(){ const m=this.meta(); if(!m.rootKey) return null; const self=this;
-    const node=k=>{ const u=self.rec(k);
-      return {name:u.name, member_id:u.member_id, role:u.role, kids:self.introducees(k).map(node)}; };
+    const node=k=>{ const u=self.rec(k); if(!u) return null;
+      return {name:u.name, member_id:u.member_id, role:u.role, kids:self.introducees(k).map(node).filter(Boolean)}; };
     return node(m.rootKey); },
 };
+// 現在ユーザーの組織キー（cloud=sha256ハッシュ / local=電話キー）
+function orgKeyOf(){ const u=userRec(); return (u&&(u.okey||u.key||u.email))||""; }
+// 登録結果(rec)をローカルのユーザーレコードに反映（mypage表示・紹介コード用）
+function mergeMyOrg(nu){
+  if(!nu||!State.user) return;
+  const all=DB.get(K.users,{}); const lu=all[State.user.email]||State.user;
+  Object.assign(lu,{okey:(Org.cloud?nu.key:State.user.email), member_id:nu.member_id, role:nu.role, introKey:nu.introKey, parentKey:nu.parentKey, position:nu.position, refCode:nu.refCode});
+  all[State.user.email]=lu; DB.set(K.users,all); State.user=lu;
+}
+// クラウドの共有ツリーから、自分の組織フィールドをローカルへ同期（他端末の更新も反映）
+async function syncMyOrg(){
+  if(!Org.cloud || !State.user || !Org._tree) return;
+  try{ const hkey=await sha256(State.user.email); const rec=Org._tree.members&&Org._tree.members[hkey]; if(rec) mergeMyOrg(rec); }catch(e){}
+}
 
 /* 紹介まわりの簡易多言語 */
 const ORG_I18N = {
@@ -310,7 +367,7 @@ function render(){
   // 隠しタブ「なかま」: アミーゴを10人紹介すると解禁・出現する
   const ctab=tabbar.querySelector('[data-view="community"]');
   if(ctab){
-    const introCount=(State.user&&State.user.member_id)?Org.introducees(State.user.email).length:0;
+    const introCount=(State.user&&State.user.member_id)?Org.introducees(orgKeyOf()).length:0;
     const unlocked=introCount>=COMMUNITY_UNLOCK;
     ctab.style.display=unlocked?"":"none";
     if(!unlocked && State.view==="community") State.view="mypage";
@@ -347,13 +404,13 @@ function viewAuth(){
   // 本物の電話SMS認証（Firebase）。Firebase未設定/未接続時はデモ（画面表示コード）にフォールバック
   let realMode=false, phoneConfirm=null, recaptcha=null;
   function ensureRecaptcha(){ if(!recaptcha) recaptcha=new firebase.auth.RecaptchaVerifier("recaptcha-container",{ size:"invisible" }); return recaptcha; }
-  function finishLogin(){
-    const all=DB.get(K.users,{}); let u=all[pendingKey]; const isNew=!u;
-    if(isNew){ u={ id:pendingKey, email:pendingKey, phone:pendingDisplay, name:(pendingNick.trim()||pendingDisplay) }; all[pendingKey]=u; DB.set(K.users,all); }
-    DB.set(K.session,pendingKey); State.user=u;
-    if(isNew){ const nu=Org.onRegister(pendingKey, u.name, State.pendingRef); if(nu) State.user=nu; State.pendingRef=null; localStorage.removeItem(K.ref); }
+  async function finishLogin(){
+    const all=DB.get(K.users,{}); let u=all[pendingKey]; const isNew=!u || !u.member_id;
+    if(!all[pendingKey]){ u={ id:pendingKey, email:pendingKey, phone:pendingDisplay, name:(pendingNick.trim()||pendingDisplay) }; all[pendingKey]=u; DB.set(K.users,all); }
+    DB.set(K.session,pendingKey); State.user=all[pendingKey];
+    if(isNew){ const nu=await Org.register(pendingKey, State.user.name, State.pendingRef); if(nu) mergeMyOrg(nu); State.pendingRef=null; localStorage.removeItem(K.ref); }
     State.view="mypage"; toast(`${t("welcome")}, ${State.user.name}!`); render();
-    if(isNew) showReferralSheet(State.user, true);
+    if(isNew && State.user.member_id) showReferralSheet(State.user, true);
   }
   function renderPhone(){
     const refBanner = State.pendingRef
@@ -395,11 +452,11 @@ function viewAuth(){
       if(realMode){
         if(!phoneConfirm){ $("#aErr",body).textContent=t("err_code"); return; }
         const btn=$("#verifyBtn",body); btn.disabled=true; btn.textContent=t("verifying");
-        try{ await phoneConfirm.confirm(code); finishLogin(); }
+        try{ await phoneConfirm.confirm(code); await finishLogin(); }
         catch(err){ console.warn("[Auth] confirm失敗", err); $("#aErr",body).textContent=t("err_code"); btn.disabled=false; btn.textContent=t("verify"); }
       } else {
         if(code!==sentCode){ $("#aErr",body).textContent=t("err_code"); return; }
-        finishLogin();
+        await finishLogin();
       }
     };
     $("#backBtn",body).onclick=renderPhone;
@@ -828,7 +885,7 @@ function openPhoto(p){
 
 /* ---------- 企業向け：広告掲載ページ（広告主を募る） ---------- */
 function viewBusiness(){
-  const members=Object.keys(DB.get(K.users,{})).length;
+  const members=Org.count();
   const langPick=el(`<div></div>`); langPick.appendChild(langSeg(()=>render()));
   const products=[ "biz_p1","biz_p2","biz_p3","biz_p4" ].map(k=>`<li>${t(k)}</li>`).join("");
   const wrap=el(`<div>
@@ -912,7 +969,18 @@ const Cloud = {
       try{ if(firebase.messaging){ this.messaging=firebase.messaging(); this.messaging.onMessage(p=>{ const n=(p&&p.notification)||{}; pushNotif([n.title,n.body].filter(Boolean).join("：")||"📣"); }); } }catch(e){ this.messaging=null; }
       console.log("[Cloud] Firebase 接続OK:", window.FIREBASE_CONFIG.projectId, "auth:", !!this.auth, "msg:", !!this.messaging);
       this.watch();
+      this.watchOrg();
     }catch(e){ console.warn("[Cloud] init失敗（端末内デモで継続）", e); this.ready=false; }
+  },
+  // 組織ツリー（全員共有）を Firestore の単一ドキュメント org/tree で購読・ミラー
+  watchOrg(){
+    Org.cloud=true;
+    this.db.collection("org").doc("tree").onSnapshot(snap=>{
+      Org._tree = snap.exists ? snap.data() : orgEmptyTree();
+      if(!Org._tree.members) Org._tree.members={};
+      if(!Org._tree.codeIndex) Org._tree.codeIndex={};
+      syncMyOrg().finally(()=>{ try{ render(); }catch{} });
+    }, err=>{ console.warn("[Org] tree購読エラー（ローカルに切替）", err); Org.cloud=false; try{ render(); }catch{} });
   },
   watch(){
     this.db.collection("votes").onSnapshot(snap=>{
@@ -1355,12 +1423,12 @@ function viewMyPage(){
 /* ---------- 起動 ---------- */
 document.querySelectorAll("#tabbar .tab").forEach(tb=>{ tb.onclick=()=>{ stopSpeak(); State.chatGroup=null; State.view=tb.dataset.view; render(); }; });
 State.user=Auth.current();
-// 既ログインで組織フィールド未付与なら補完（最初の人＝1番に）
-if(State.user && !State.user.member_id){ const nu=Org.onRegister(State.user.email, State.user.name, null); if(nu) State.user=nu; }
 // 紹介URL ?ref=CODE を取り込み（多段の登録フローをまたいで保持）
 State.pendingRef = new URLSearchParams(location.search).get("ref") || localStorage.getItem(K.ref) || null;
 if(State.pendingRef) localStorage.setItem(K.ref, State.pendingRef);
 // URLに #business / #ads があれば企業向け広告ページを表示（企業に直接リンクを送れる）
 if(/^#(business|ads)$/.test(location.hash)) State.business=true;
-Cloud.init(); // Firebase接続（設定があればクラウド投票が有効化）
+Cloud.init(); // Firebase接続（設定があればクラウド投票＋共有組織が有効化）
 render();
+// 既ログインで組織フィールド未付与なら、クラウド接続を少し待ってから補完（通常はここを通らない）
+setTimeout(()=>{ if(State.user && !State.user.member_id){ Org.register(State.user.email, State.user.name, State.pendingRef).then(nu=>{ if(nu){ mergeMyOrg(nu); render(); } }); } }, 1600);
