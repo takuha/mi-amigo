@@ -171,7 +171,9 @@ function saveProfile(p){ const u=DB.get(K.users,{}); const r=u[State.user.email]
   if(p.gender!==undefined) r.gender=p.gender;
   if(p.country!==undefined) r.country=p.country;
   if(p.prouds!==undefined) r.prouds=p.prouds;
-  DB.set(K.users,u); State.user=r; }
+  DB.set(K.users,u); State.user=r;
+  Cloud.saveUserData({ profile:{ name:r.name, avatar:r.avatar, bio:r.bio, age:r.age, gender:r.gender, country:r.country, prouds:r.prouds } }); // プロフィールをクラウド同期（別端末で引き継ぐ）
+}
 function profileMeta(r){ const b=[]; if(r.country) b.push(countryFlag(r.country)+" "+countryName(r.country)); if(r.age) b.push(r.age); if(r.gender) b.push(t("g_"+r.gender)); let s=b.join(" · "); if(r.prouds&&r.prouds.length) s+=(s?"　":"")+"❤️ "+r.prouds.map(countryFlag).join(""); return s; }
 function avatarHTML(rec, size){
   size=size||44;
@@ -292,6 +294,10 @@ Object.assign(I18N.es,{ phone:"Número de teléfono", phone_ph:"Teléfono (sin g
 Object.assign(I18N.ja,{ continue_google:"Googleで続ける", continue_email:"メールで続ける", or_phone:"または電話番号で", email_label:"メールアドレス", email_ph:"you@email.com", email_send_link:"ログインリンクを送る", email_note:"パスワード不要。届いたメールのリンクを開くだけでログインできます。", email_sent_title:"メールを確認してください", email_sent_body:"ログインリンクを送りました📩 メール内のリンクを開いてください：", email_err:"メールの送信に失敗しました。アドレスをご確認ください。", err_email:"メールアドレスを入力してください", google_err:"Googleログインに失敗しました。もう一度お試しください。", signing_in:"ログイン中…", email_confirm_prompt:"確認のためメールアドレスを入力してください" });
 Object.assign(I18N.en,{ continue_google:"Continue with Google", continue_email:"Continue with email", or_phone:"or with your phone", email_label:"Email", email_ph:"you@email.com", email_send_link:"Send login link", email_note:"No password. Just open the link we email you to sign in.", email_sent_title:"Check your email", email_sent_body:"We sent a login link 📩 Open the link in the email:", email_err:"Couldn't send the email. Please check the address.", err_email:"Enter your email", google_err:"Google sign-in failed. Please try again.", signing_in:"Signing in…", email_confirm_prompt:"Please confirm your email address" });
 Object.assign(I18N.es,{ continue_google:"Continuar con Google", continue_email:"Continuar con correo", or_phone:"o con tu teléfono", email_label:"Correo", email_ph:"tu@correo.com", email_send_link:"Enviar enlace de acceso", email_note:"Sin contraseña. Solo abre el enlace que te enviamos por correo.", email_sent_title:"Revisa tu correo", email_sent_body:"Te enviamos un enlace 📩 Ábrelo en el correo:", email_err:"No se pudo enviar el correo. Revisa la dirección.", err_email:"Ingresa tu correo", google_err:"Error al entrar con Google. Inténtalo otra vez.", signing_in:"Entrando…", email_confirm_prompt:"Confirma tu correo electrónico" });
+// メール＋6桁コード方式（骨組み）の注記
+Object.assign(I18N.ja,{ email_code_note:"メールアドレスに6桁の認証コードをお送りします。※本番のメール送信は準備中です（現在はデモ用コードが画面に表示されます）。" });
+Object.assign(I18N.en,{ email_code_note:"We'll email you a 6-digit code. *Real email sending is in setup (a demo code is shown on screen for now).*" });
+Object.assign(I18N.es,{ email_code_note:"Te enviaremos un código de 6 dígitos por correo. *El envío real está en preparación (por ahora se muestra un código demo en pantalla).*" });
 const DIAL={ JP:"+81",GT:"+502",US:"+1",CA:"+1",MX:"+52",ES:"+34",FR:"+33",DE:"+49",GB:"+44",IT:"+39",NL:"+31",CH:"+41",PT:"+351",IE:"+353",SE:"+46",NO:"+47",AU:"+61",NZ:"+64",BR:"+55",AR:"+54",CL:"+56",CO:"+57",PE:"+51",CR:"+506",SV:"+503",HN:"+504",NI:"+505",BZ:"+501",KR:"+82",CN:"+86",TW:"+886",TH:"+66",IN:"+91",IL:"+972",ZA:"+27",PL:"+48" };
 
 // 隠しタブ「なかま」解禁に必要な紹介人数（アミーゴを何人紹介したら入れるか）
@@ -312,6 +318,9 @@ const VOTE_UNLOCK=10;
 const VOTE_SEED={ machupicchu:9, rome:6, angkor:5, tikal:4, chichen:3, copan:2, cusco:2 };
 // 連絡先（広告掲載の問い合わせ受信先。必要に応じて専用アドレスに変更可）
 const BIZ_EMAIL="takuha1988@gmail.com";
+// 管理者（会員#1＝TAKUHA）の本人確認＝このGmailでログインした人だけがadmin（申込・問い合わせ＝個人情報を読める）。
+// テスト電話番号での「合鍵」問題を塞ぐため、admin判定は電話番号からこのメールに変更。サーバー側 firestore.rules も同じメールで判定。
+const ADMIN_EMAIL="takuha1988@gmail.com";
 // 追加i18n（企業向け広告掲載・スポンサー）
 Object.assign(I18N.ja,{ pr:"PR", biz_open:"🏢 企業の方へ（広告掲載）", biz_title:"企業の方へ｜広告掲載", biz_hero:"アンティグアを歩く旅行者に、ピンポイントで届く。",
   biz_audience:"届く相手", biz_a1:"電話番号認証済みのリアルな会員", biz_a2:"出身国・年齢・性別・興味でターゲティング可能", biz_a3:"アンティグア来訪中＝“今まさに使う”消費意欲の高い層",
@@ -353,6 +362,15 @@ function closeSheet(){ $(".sheet-back")?.remove(); }
 function openSheet(html){ closeSheet(); const b=el(`<div class="sheet-back"><div class="sheet"><div class="grab"></div>${html}</div></div>`); b.addEventListener("click",e=>{ if(e.target===b) closeSheet(); }); $(".phone").appendChild(b); return b; }
 
 function fileToResizedDataUrl(file,max=900,q=0.78){ return new Promise((res,rej)=>{ const img=new Image(),r=new FileReader(); r.onload=()=>img.src=r.result; r.onerror=rej; img.onload=()=>{ let{width:w,height:h}=img; if(w>h&&w>max){h=h*max/w;w=max;} else if(h>max){w=w*max/h;h=max;} const c=document.createElement("canvas"); c.width=w; c.height=h; c.getContext("2d").drawImage(img,0,0,w,h); res(c.toDataURL("image/jpeg",q)); }; img.onerror=rej; r.readAsDataURL(file); }); }
+// 撮った写真を「お客さん本人の端末」にも保存（静かにダウンロード）。
+// PC/Androidはそのまま端末に保存。iOS Safariは画像が開くので長押し保存（仕様）。share sheetは出さない＝撮影のたび邪魔しない。
+async function savePhotoToDevice(dataUrl, name){
+  try{
+    const blob=await (await fetch(dataUrl)).blob();
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000); return true;
+  }catch(e){ console.warn("[Photo] 端末保存スキップ", e); return false; }
+}
 
 /* ---------- 音声(TTS) ---------- */
 function stopSpeak(){ try{ window.speechSynthesis&&speechSynthesis.cancel(); }catch{} State.speakingId=null; }
@@ -410,6 +428,7 @@ async function socialLogin(fbUser, nickOverride){
     State.pendingRef=null; localStorage.removeItem(K.ref);
   }
   State.view="mypage"; toast(`${t("welcome")}, ${State.user.name}!`); render();
+  Cloud.watchUserData(); // 別端末でも同じGoogle/メール→写真・進捗・プロフィールをクラウドから復元
   if(isNew && State.user.member_id) showReferralSheet(State.user, true);
 }
 // ソーシャル（リダイレクト）／メールリンクからの復帰を起動時に完了させる
@@ -459,15 +478,17 @@ function viewAuth(){
     DB.set(K.session,pendingKey); State.user=all[pendingKey];
     if(isNew){ const nu=await Org.register(pendingKey, State.user.name, State.pendingRef); if(nu) mergeMyOrg(nu); State.pendingRef=null; localStorage.removeItem(K.ref); }
     State.view="mypage"; toast(`${t("welcome")}, ${State.user.name}!`); render();
+    Cloud.watchUserData(); // 別端末から同じ番号でログイン→写真・進捗・プロフィールをクラウドから復元
     if(isNew && State.user.member_id) showReferralSheet(State.user, true);
   }
   function refBannerHTML(){
-    return State.pendingRef
-      ? `<div class="card" style="background:#e1f5ee;border:none;margin-bottom:12px"><div class="card-body" style="padding:10px 12px">🎟️ ${orgT("joined_via")}：<b style="color:var(--teal)">${esc(State.pendingRef)}</b></div></div>`
-      : "";
+    // 「招待コードで登録します：◯◯」バナーは非表示（TAKUHA指示で撤去）。
+    // 紹介コード(State.pendingRef)は裏で組織配置に使われ続けるので機能は不変。
+    return "";
   }
   // メールリンク（パスワードレス）：届いたメールのリンクを開くだけでログイン
-  function renderEmail(){
+  // ※TAKUHA指示で入口は「6桁コード方式(renderEmail)」に切替。この関数は将来用に保持（休眠）。
+  function renderEmailLink(){
     body.innerHTML=`
       ${refBannerHTML()}
       <div class="field"><label>${t("email_label")}</label><input id="email" type="email" inputmode="email" placeholder="${t("email_ph")}" /></div>
@@ -492,6 +513,29 @@ function viewAuth(){
           <button class="btn ghost" id="ebackBtn2" style="margin-top:14px">${t("back")}</button>`;
         $("#ebackBtn2",body).onclick=renderPhone;
       }catch(err){ console.warn("[Auth] メールリンク送信失敗", err); $("#aErr",body).textContent=t("email_err"); btn.disabled=false; btn.textContent=t("email_send_link"); }
+    };
+  }
+  // メール＋6桁コード方式（骨組み）：電話と同じ流れ。メールに認証コードが届く想定。
+  // ⚠️ 本番のメール送信（6桁コード）はFirebase標準に無い＝バックエンド(Cloud Functions＋メール送信)が必要。
+  //    未接続の現状はデモコードを画面表示するフォールバックで動かす（電話のデモと同じ仕組み）。
+  function renderEmail(){
+    body.innerHTML=`
+      <div class="field"><label>${t("email_label")}</label><input id="email" type="email" inputmode="email" placeholder="${t("email_ph")}" /></div>
+      <div class="field"><label>${t("nick_new")}</label><input id="enick" placeholder="Taku" /></div>
+      <p class="error" id="aErr"></p>
+      <button class="btn" id="emailCodeBtn">${t("send_code")}</button>
+      <button class="btn ghost" id="ebackBtn" style="margin-top:8px">${t("back")}</button>
+      <p class="hint" style="margin-top:12px">${t("email_code_note")}</p>`;
+    $("#ebackBtn",body).onclick=renderPhone;
+    $("#emailCodeBtn",body).onclick=async ()=>{
+      const email=$("#email",body).value.trim().toLowerCase();
+      if(!email || !/.+@.+\..+/.test(email)){ $("#aErr",body).textContent=t("err_email"); return; }
+      pendingKey=email; pendingDisplay=email; pendingNick=$("#enick",body).value;
+      // TODO(本番): ここで Cloud Functions を呼び、メールに6桁コードを送信する。
+      //   const r = await Cloud.sendEmailCode(email);  // 未実装
+      // 現状はデモ：コードを生成して画面に表示（電話のデモと同じ realMode=false 経路）。
+      realMode=false; sentCode=String(Math.floor(100000+Math.random()*900000));
+      toast(t("code_sent")); renderCode();
     };
   }
   function renderPhone(){
@@ -533,10 +577,11 @@ function viewAuth(){
     };
   }
   function renderCode(){
+    const chIcon = (pendingDisplay && pendingDisplay.includes("@")) ? "✉️" : "📱";
     const demoBox = realMode ? "" : `<div class="card" style="background:#f3ece0;border:none;margin-bottom:14px"><div class="card-body">
-        <div class="muted" style="font-size:13px">📱 ${esc(pendingDisplay)}</div>
+        <div class="muted" style="font-size:13px">${chIcon} ${esc(pendingDisplay)}</div>
         <div style="margin-top:6px;font-size:14px">${t("demo_code")}: <b style="font-size:22px;letter-spacing:4px;color:var(--terra)">${sentCode}</b></div></div></div>`;
-    const realHint = realMode ? `<div class="card" style="background:#f3ece0;border:none;margin-bottom:14px"><div class="card-body"><div class="muted" style="font-size:13px">📱 ${esc(pendingDisplay)}</div><div style="margin-top:4px;font-size:13px">${t("code_real_hint")}</div></div></div>` : "";
+    const realHint = realMode ? `<div class="card" style="background:#f3ece0;border:none;margin-bottom:14px"><div class="card-body"><div class="muted" style="font-size:13px">${chIcon} ${esc(pendingDisplay)}</div><div style="margin-top:4px;font-size:13px">${t("code_real_hint")}</div></div></div>` : "";
     body.innerHTML=`
       ${demoBox}${realHint}
       <div class="field"><label>${t("code")}</label><input id="code" inputmode="numeric" maxlength="6" placeholder="${t("code_ph")}" /></div>
@@ -680,8 +725,11 @@ function openCheckin(spot){
   $("#ckLater",back).onclick=closeSheet;
   $("#camInput",back).onchange=async e=>{ const file=e.target.files[0]; if(!file) return; const lbl=back.querySelector('label[for="camInput"]'); lbl.textContent=t("processing");
     try{ const dataUrl=await fileToResizedDataUrl(file);
-      const album=DB.get(K.album,[]); album.unshift({id:"p"+Date.now(),userEmail:State.user.email,spotId:spot.id,place:L(spot.title),dataUrl,caption:`${L(spot.title)} — Antigua, Guatemala 🌋 #MiAmigo #Antigua`,createdAt:Date.now()}); DB.set(K.album,album);
+      const album=DB.get(K.album,[]); const photoRec={id:"p"+Date.now(),userEmail:State.user.email,spotId:spot.id,place:L(spot.title),dataUrl,caption:`${L(spot.title)} — Antigua, Guatemala 🌋 #MiAmigo #Antigua`,createdAt:Date.now()}; album.unshift(photoRec); DB.set(K.album,album);
+      savePhotoToDevice(dataUrl, `miamigo_${spot.id||"photo"}_${Date.now()}.jpg`); // ★本人の端末にも保存（指示どおり）
       const all=DB.get(K.stamps,{}); all[State.user.email]={...(all[State.user.email]||{}),[spot.id]:true}; DB.set(K.stamps,all);
+      Cloud.savePhotoCloud(photoRec);                                  // ★クラウド(アミーゴ内)にも保存＝別端末で見える
+      Cloud.saveUserData({ stamps: all[State.user.email] });           // ★進捗(スタンプ)もクラウド同期
       const justCleared=stageComplete(DATA.stages[0]);
       closeSheet(); toast(justCleared?t("stage_unlocked_toast"):t("ck_done")); render();
     }catch{ toast(t("ck_fail")); lbl.textContent=t("ck_take"); }
@@ -977,7 +1025,7 @@ function openPhoto(p){
   back.querySelectorAll(".plat").forEach(b=>b.onclick=()=>shareToPlatform(b.dataset.k, $("#cap",back).value, p));
   $("#save",back).onclick=()=>{ const a=document.createElement("a"); a.href=p.dataUrl; a.download=`miamigo_${p.spotId||"photo"}.jpg`; a.click(); };
   $("#other",back).onclick=async()=>{ try{ if(navigator.share){ const blob=await (await fetch(p.dataUrl)).blob(); const file=new File([blob],"miamigo.jpg",{type:"image/jpeg"}); const pl={text:$("#cap",back).value}; if(navigator.canShare&&navigator.canShare({files:[file]})) pl.files=[file]; await navigator.share(pl); toast(t("shared")); } else { await navigator.clipboard?.writeText($("#cap",back).value); toast(t("copied")); } }catch{} };
-  $("#del",back).onclick=()=>{ DB.set(K.album, DB.get(K.album,[]).filter(x=>x.id!==p.id)); closeSheet(); toast(t("deleted")); render(); };
+  $("#del",back).onclick=()=>{ DB.set(K.album, DB.get(K.album,[]).filter(x=>x.id!==p.id)); Cloud.deletePhotoCloud(p.id); closeSheet(); toast(t("deleted")); render(); };
 }
 
 /* ---------- 企業向け：広告掲載ページ（広告主を募る） ---------- */
@@ -1067,7 +1115,7 @@ const Cloud = {
       console.log("[Cloud] Firebase 接続OK:", window.FIREBASE_CONFIG.projectId, "auth:", !!this.auth, "msg:", !!this.messaging);
       this.watch();
       // 組織ツリーの読取はルール上ログイン必須。ログイン状態が確定してから購読を開始する。
-      if(this.auth){ this.auth.onAuthStateChanged(u=>{ if(u) this.watchOrg(); }); }
+      if(this.auth){ this.auth.onAuthStateChanged(u=>{ if(u){ this.watchOrg(); this.watchUserData(); } }); }
     }catch(e){ console.warn("[Cloud] init失敗（端末内デモで継続）", e); this.ready=false; }
   },
   // 組織ツリー（全員共有）を Firestore の単一ドキュメント org/tree で購読・ミラー（ログイン後に呼ぶ）
@@ -1105,8 +1153,53 @@ const Cloud = {
     if(!this.ready){ cb(null); return ()=>{}; }
     return this.db.collection("submissions").orderBy("ts","desc").limit(50)
       .onSnapshot(snap=>cb(snap.docs.map(d=>({id:d.id, ...d.data()}))), err=>{ console.warn("[Cloud] submissions購読エラー", err); cb(null); });
+  },
+
+  // ===== アカウント単位のクラウド保存（別端末で引き継ぐ）。キー＝Firebase認証uid（同じ番号/メール/Google→全端末で同一） =====
+  authUid(){ return (this.auth && this.auth.currentUser) ? this.auth.currentUser.uid : null; },
+  // 写真をクラウド保存（photos コレクション。1枚=1ドキュメント／所有者=authUid）。大きすぎる写真は端末保存のみ。
+  async savePhotoCloud(photo){
+    const uid=this.authUid(); if(!this.ready || !uid || !photo) return false;
+    if(photo.dataUrl && photo.dataUrl.length > 900000){ console.warn("[Cloud] 写真が大きすぎ→クラウド保存スキップ（端末・アルバムには保存済）"); return false; }
+    try{ await this.db.collection("photos").doc(photo.id).set({ owner:uid, spotId:photo.spotId||"", place:photo.place||"", dataUrl:photo.dataUrl||"", caption:photo.caption||"", ts:photo.createdAt||Date.now() }); return true; }
+    catch(e){ console.warn("[Cloud] 写真のクラウド保存失敗", e); return false; }
+  },
+  async deletePhotoCloud(id){ const uid=this.authUid(); if(!this.ready||!uid||!id) return; try{ await this.db.collection("photos").doc(id).delete(); }catch(e){ console.warn("[Cloud] 写真のクラウド削除失敗", e); } },
+  // 軽いデータ（スタンプ＝謎解き進捗・プロフィール）を userdata/{uid} に保存（merge）
+  async saveUserData(patch){
+    const uid=this.authUid(); if(!this.ready||!uid||!patch) return;
+    try{ await this.db.collection("userdata").doc(uid).set({ owner:uid, ...patch, ts:firebase.firestore.FieldValue.serverTimestamp() }, {merge:true}); }
+    catch(e){ console.warn("[Cloud] userdata保存失敗", e); }
+  },
+  // ログインユーザーの写真＋軽データを購読し、この端末のローカルへミラー（別端末でも同じ状態に）
+  watchUserData(){
+    const uid=this.authUid(); if(!this.ready || !uid) return;
+    if(this._photoUnsub || this._udUnsub) return;  // 二重購読防止
+    this._photoUnsub=this.db.collection("photos").where("owner","==",uid).onSnapshot(snap=>{
+      mergeCloudPhotos(snap.docs.map(d=>({id:d.id, ...d.data()}))); try{ render(); }catch{}
+    }, err=>console.warn("[Cloud] photos購読エラー", err));
+    this._udUnsub=this.db.collection("userdata").doc(uid).onSnapshot(snap=>{
+      if(snap.exists){ mergeCloudUserData(snap.data()||{}); try{ render(); }catch{} }
+    }, err=>console.warn("[Cloud] userdata購読エラー", err));
   }
 };
+// クラウドの写真をローカルのアルバムにミラー（クラウドが正。まだ未アップの端末内写真は残す）
+function mergeCloudPhotos(cloudPhotos){
+  if(!State.user) return; const email=State.user.email;
+  const byId={};
+  DB.get(K.album,[]).forEach(p=>{ byId[p.id]=p; });
+  cloudPhotos.forEach(x=>{ byId[x.id]={ id:x.id, userEmail:email, spotId:x.spotId, place:x.place, dataUrl:x.dataUrl, caption:x.caption, createdAt:x.ts||0, _cloud:true }; });
+  DB.set(K.album, Object.values(byId).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)));
+}
+// クラウドの軽データ（スタンプ・プロフィール）をローカルへ反映
+function mergeCloudUserData(x){
+  if(!State.user) return; const email=State.user.email;
+  if(x.stamps){ const all=DB.get(K.stamps,{}); all[email]={...(all[email]||{}), ...x.stamps}; DB.set(K.stamps,all); }
+  if(x.profile){ const u=DB.get(K.users,{}); const r=u[email]||State.user; const p=x.profile;
+    ["name","avatar","bio","age","gender","country","prouds","photo"].forEach(k=>{ if(p[k]!==undefined && p[k]!==null && p[k]!=="") r[k]=p[k]; });
+    u[email]=r; DB.set(K.users,u); State.user=r;
+  }
+}
 function seedVotes(){ if(!DB.get(K.votes,null)) DB.set(K.votes,{...VOTE_SEED}); }
 function stageVotes(id){ if(Cloud.ready) return (VOTE_SEED[id]||0)+(Cloud.counts[id]||0); seedVotes(); return DB.get(K.votes,{})[id]||0; }
 function hasVoted(id){ if(Cloud.ready) return Cloud.mine.has(id); return !!DB.get(K.myvotes,{})[id]; }
@@ -1122,7 +1215,7 @@ function toggleVote(id){
 }
 function stagePioneered(stage){ return stageVotes(stage.id)>=VOTE_UNLOCK; }
 // TAKUHA（会員番号1番＝ルート＝admin）だけが制作レイヤーを見られる
-function isAdmin(){ const u=userRec(); return !!u && (u.member_id===1 || u.role==="admin"); }
+function isAdmin(){ const u=userRec(); if(!u) return false; if((u.email||"").toLowerCase()===ADMIN_EMAIL) return true; return u.member_id===1 || u.role==="admin"; }
 // 通知（アプリ内お知らせ＋Webプッシュ）。※全ユーザーへのクロス端末配信は本番でバックエンド/FCMが必要
 function requestNotify(){ if(!("Notification" in window)){ toast(t("notif_unsupported")); return; }
   Notification.requestPermission().then(p=>{ toast(p==="granted"?t("notif_on"):t("notif_off")); render(); }); }
