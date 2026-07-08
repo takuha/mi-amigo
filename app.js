@@ -1509,8 +1509,7 @@ function openStageSheet(stage, idx){
   const stages=DATA.stages, st=stageStatus(stage,idx,stages), p=stageProgress(stage), pct=p.total?Math.round(p.done/p.total*100):0;
   if(st==="sight"){
     const hasGuide=!!stage.content;
-    const back=openSheet(`<h2>${stage.flag} ${esc(L(stage.name))}</h2>
-      <p class="muted" style="font-size:13px;margin:2px 0 12px">${esc(L(stage.country))} ・ <span style="color:#3fae6a;font-weight:700">${t("sight_badge")}</span></p>
+    const back=openSheet(`${stageHeroHTML(stage)}
       <div class="card"><div class="card-body"><p style="margin:0">${esc(L(stage.blurb)||t("sight_soon"))}</p></div></div>
       ${hasGuide?`<button class="btn gold" id="stGuide" style="margin-top:10px">${t("sight_guide_cta")}</button>`:""}
       <button class="btn ${hasGuide?"secondary":"gold"}" id="stMap" style="margin-top:${hasGuide?8:10}px">${t("go_here")}</button>
@@ -1562,6 +1561,24 @@ function openStageSheet(stage, idx){
   }
 }
 
+// 観光地ごとのテーマ配色（外部画像なしのグラデ・ヒーロー用）
+const SIGHT_THEME={
+  atitlan:{c1:"#1f7a8c",c2:"#3d3b7a",icon:"🌋"},
+  monterrico:{c1:"#2a2a3a",c2:"#e2703a",icon:"🐢"},
+  semuc:{c1:"#1f9e7a",c2:"#0f5d3a",icon:"🏞️"},
+  flores:{c1:"#2a86c9",c2:"#d76a72",icon:"🏝️"},
+  _default:{c1:"#2c8c84",c2:"#e8a33d",icon:"🌎"},
+};
+// グラデーションのヒーローバナー（絵文字＋名前＋種別）。写真の代わりにカードを華やかに。
+function stageHeroHTML(stage){
+  const th=SIGHT_THEME[stage.id]||SIGHT_THEME._default, isSight=stage.type==="sight";
+  return `<div style="border-radius:16px;overflow:hidden;margin:0 0 14px;background:linear-gradient(135deg,${th.c1},${th.c2});color:#fff;padding:18px 16px;position:relative">
+    <div style="position:absolute;right:12px;top:8px;font-size:58px;opacity:.26;line-height:1">${stage.flag}</div>
+    <div style="font-size:38px;line-height:1;margin-bottom:6px">${th.icon}</div>
+    <div style="font-size:22px;font-weight:800;text-shadow:0 1px 2px rgba(0,0,0,.2)">${esc(L(stage.name))}</div>
+    <div style="font-size:13px;opacity:.95;margin-top:3px">${esc(L(stage.country))} ・ ${isSight?t("sight_badge"):t("leg_heritage")}</div>
+  </div>`;
+}
 // 観光地の音声ガイド＆謎解きビューア（一般ユーザー向け・世界遺産の制作プレビューとは別の公開版）
 function openSightGuide(stage){
   const c=stage.content; if(!c){ toast(t("sight_soon")); return; }
@@ -1583,8 +1600,7 @@ function openSightGuide(stage){
       <div style="flex:1"><strong>${esc(L(h.title))}</strong>
         <p class="muted" style="font-size:13px;margin:6px 0 0">${esc(L(h.body))}</p></div></div>
     <button class="btn teal sm" data-hist="${i}" style="width:100%;margin-top:12px">${t("play")}</button></div></div>`).join("");
-  const back=openSheet(`<h2>${stage.flag} ${esc(L(stage.name))}</h2>
-    <p class="muted" style="font-size:13px;margin:2px 0 10px">${esc(L(stage.country))} ・ <span style="color:#3fae6a;font-weight:700">${t("sight_badge")}</span></p>
+  const back=openSheet(`${stageHeroHTML(stage)}
     <p style="font-size:14px;margin:0 0 12px">${esc(L(c.intro))}</p>
     <div class="card" style="margin:0 0 12px;background:rgba(44,140,132,.10)"><div class="card-body" style="padding:10px 12px">
       <div class="row" style="align-items:center"><strong style="font-size:14px">📸 ${t("sight_photos")}</strong><span class="spacer"></span><strong style="font-size:15px;color:var(--teal)">${done} / ${total}</strong></div>
