@@ -249,9 +249,9 @@ Object.assign(I18N.en,{ globe_title:"World Heritage map", globe_sub:"Complete th
 Object.assign(I18N.es,{ globe_title:"Mapa del Patrimonio", globe_sub:"Completa el rally para desbloquear el siguiente sitio", you_are_here:"Estás aquí", stage_open:"Abierto", stage_next:"Siguiente etapa", stage_locked:"Próximamente", stage_done:"Completado", st_stage:"Etapa", to_quest:"Ir al rally", to_guide:"Audioguía", complete_to_unlock:"Completa Antigua para desbloquear", locked_title:"Próximamente", locked_msg:"Este sitio aún no está listo. ¡Primero completa el rally de la Etapa 1 en Antigua!", stage_unlocked_toast:"🎉 ¡Antigua completada! Se desbloqueó la siguiente etapa", drag_hint:"Arrastra para girar el globo" });
 
 // 追加i18n（凡例＋観光地）
-Object.assign(I18N.ja,{ leg_heritage:"世界遺産", leg_sight:"観光地", leg_done:"制覇", leg_locked:"近日", sight_badge:"観光地", sight_soon:"ガイド準備中", sight_msg:"この観光地の音声ガイドは準備中です。ガイドを申し込むこともできます。", sight_guide_cta:"🎧 音声ガイド＆謎解き", sight_photos:"写真ミッション", sight_all_done:"🎉 全スポット制覇！すてきな旅を" });
-Object.assign(I18N.en,{ leg_heritage:"World Heritage", leg_sight:"Sights", leg_done:"Cleared", leg_locked:"Soon", sight_badge:"Sight", sight_soon:"Guide coming", sight_msg:"The audio guide for this spot is in the works. You can also request a guide.", sight_guide_cta:"🎧 Audio guide & rally", sight_photos:"Photo missions", sight_all_done:"🎉 All spots cleared! Enjoy the trip" });
-Object.assign(I18N.es,{ leg_heritage:"Patrimonio", leg_sight:"Lugares", leg_done:"Completado", leg_locked:"Pronto", sight_badge:"Lugar turístico", sight_soon:"Guía en camino", sight_msg:"La audioguía de este lugar está en preparación. También puedes solicitar una guía.", sight_guide_cta:"🎧 Audioguía y rally", sight_photos:"Misiones de foto", sight_all_done:"🎉 ¡Todos los lugares completados! Buen viaje" });
+Object.assign(I18N.ja,{ leg_heritage:"世界遺産", leg_sight:"観光地", leg_done:"制覇", leg_locked:"近日", sight_badge:"観光地", sight_soon:"ガイド準備中", sight_msg:"この観光地の音声ガイドは準備中です。ガイドを申し込むこともできます。", sight_guide_cta:"🎧 音声ガイド＆謎解き", sight_photos:"写真ミッション", sight_all_done:"🎉 全スポット制覇！すてきな旅を", map_destinations:"🌎 観光地・世界遺産" });
+Object.assign(I18N.en,{ leg_heritage:"World Heritage", leg_sight:"Sights", leg_done:"Cleared", leg_locked:"Soon", sight_badge:"Sight", sight_soon:"Guide coming", sight_msg:"The audio guide for this spot is in the works. You can also request a guide.", sight_guide_cta:"🎧 Audio guide & rally", sight_photos:"Photo missions", sight_all_done:"🎉 All spots cleared! Enjoy the trip", map_destinations:"🌎 Sights & World Heritage" });
+Object.assign(I18N.es,{ leg_heritage:"Patrimonio", leg_sight:"Lugares", leg_done:"Completado", leg_locked:"Pronto", sight_badge:"Lugar turístico", sight_soon:"Guía en camino", sight_msg:"La audioguía de este lugar está en preparación. También puedes solicitar una guía.", sight_guide_cta:"🎧 Audioguía y rally", sight_photos:"Misiones de foto", sight_all_done:"🎉 ¡Todos los lugares completados! Buen viaje", map_destinations:"🌎 Lugares y Patrimonio" });
 
 // 追加i18n（次の目的地ガイド申込ボックス）
 Object.assign(I18N.ja,{ gr_cta:"🧭 次の行き先のガイドを申し込む", gr_locked_cta:"🧭 この遺産のガイドを申し込む", gr_title:"次の行き先のガイドを申し込む", gr_sub:"アンティグア制覇おめでとう！次はどこへ？いつ行く？教えてください。出発までにガイドを用意します。", gr_dest:"次に行く世界遺産", gr_other:"その他（自由入力）", gr_other_ph:"行き先を入力", gr_from:"いつから", gr_to:"いつまで", gr_period:"滞在期間", gr_name:"お名前", gr_msg:"ひとこと・要望", gr_msg_ph:"例: コーヒー農園も回りたい / スペイン語ガイド希望 など", gr_send:"📩 この内容で申し込む", gr_sent:"申込メールを作成しました。メールアプリで送信してください。", gr_need_dest:"行き先を入力してください", gr_mail_intro:"Mi Amigo ガイド申込です。次の行き先のガイド作成をお願いします。", gr_clear_at:"個コンプリートで次の遺産が解禁" });
@@ -375,7 +375,7 @@ I18N.zh = {
   biz_audience:"触达对象", biz_a1:"已完成电话验证的真实会员", biz_a2:"可按来源国、年龄、性别、兴趣定向", biz_a3:"正在安提瓜旅行中＝“正当下就消费”的高意愿人群",
   biz_products:"广告菜单", biz_p1:"赞助展示（“探索”置顶・广告标识）", biz_p2:"横幅广告", biz_p3:"赞助解谜地点（把贵店铺设为解谜点）", biz_p4:"定向推送通知（正式版）",
   biz_members:"当前注册会员（演示）", biz_people:"人", biz_inquiry:"广告投放咨询", biz_company:"公司名称", biz_person:"负责人姓名", biz_contact:"联系方式（邮箱/电话）", biz_budget:"预算区间（选填）", biz_message:"留言", biz_send:"发送", biz_sent:"已在邮件应用中生成咨询邮件", biz_note:"可将本页面的URL发送给企业。咨询将通过邮件送达。", biz_back:"返回应用",
-  leg_heritage:"世界遗产", leg_sight:"观光地", leg_done:"已通关", leg_locked:"即将开放", sight_badge:"观光地", sight_soon:"指南筹备中", sight_msg:"这个观光地的语音指南正在筹备中。你也可以申请，我们会尽快制作。", sight_guide_cta:"🎧 语音向导和解谜", sight_photos:"拍照任务", sight_all_done:"🎉 全部地点通关！旅途愉快",
+  leg_heritage:"世界遗产", leg_sight:"观光地", leg_done:"已通关", leg_locked:"即将开放", sight_badge:"观光地", sight_soon:"指南筹备中", sight_msg:"这个观光地的语音指南正在筹备中。你也可以申请，我们会尽快制作。", sight_guide_cta:"🎧 语音向导和解谜", sight_photos:"拍照任务", sight_all_done:"🎉 全部地点通关！旅途愉快", map_destinations:"🌎 观光地・世界遗产",
 };
 ORG_I18N.zh = { your_no:"你的会员编号", your_code:"你的邀请码", invite_title:"邀请好友", invite_sub:"通过此邀请码/URL注册的人，会成为你的伙伴（你介绍的同伴）", copy:"复制", copied:"已复制", share:"分享", org_chart:"组织图", members:"会员数", binary:"双轨（排位）", unilevel:"单层（推荐）", welcome_code:"你的邀请码已生成！", introduced_by:"推荐人", joined_via:"使用邀请码注册" };
 // 国名・ステージ名の中国語を DATA に補完（countryName / L() が zh を拾えるように）
@@ -865,6 +865,8 @@ function viewMap(){
       <a class="btn secondary" href="${gmapsView(center.lat,center.lng)}" target="_blank" rel="noopener" style="margin:12px 0">${t("all_route")}</a>
       <button class="btn gold" id="geoBtn">${t("enable_loc")}</button>
       <div id="spotList" style="margin-top:10px"></div>
+      <div class="section-title">${t("map_destinations")}</div>
+      <div id="destList"></div>
     </div></div>`);
   const render2=()=>{
     let list=stops.map((s,i)=>({s,i}));
@@ -880,10 +882,29 @@ function viewMap(){
       box.appendChild(item);
     });
   };
+  // 観光地・世界遺産の一覧（地球儀と同じ目的地をマップからも探せる。観光地→ガイド、Googleマップ導線）
+  const renderDest=()=>{
+    const dl=$("#destList",wrap); if(!dl) return; dl.innerHTML="";
+    const dests=DATA.stages.slice(1).slice().sort((a,b)=>(a.type==="sight"?0:1)-(b.type==="sight"?0:1)); // 観光地を上に
+    dests.forEach(stg=>{ const isSight=stg.type==="sight";
+      const badge=`<span class="badge" style="background:${isSight?"#35b06a":"#eaa72e"};color:#fff">${isSight?t("leg_sight"):t("leg_heritage")}</span>`;
+      const dist=State.geo?`<span class="badge stay">${t("away")}${distKm(State.geo,stg).toFixed(distKm(State.geo,stg)<10?1:0)} ${t("km_away")}</span>`:"";
+      const item=el(`<div class="list-item"><div class="ava">${stg.flag}</div>
+        <div style="flex:1"><strong>${esc(L(stg.name))}</strong> ${badge} ${dist}
+          <div class="muted" style="font-size:12px;margin-top:2px">${esc(L(stg.country))}</div>
+          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+            <a class="btn sm teal" href="${gmapsDir(stg.lat,stg.lng)}" target="_blank" rel="noopener" style="display:inline-block">${t("go_here")}</a>
+            ${isSight&&stg.content?`<button class="btn sm gold" data-guide="${stg.id}">${t("sight_guide_cta")}</button>`:""}
+          </div></div></div>`);
+      dl.appendChild(item);
+    });
+    dl.querySelectorAll("[data-guide]").forEach(b=>b.onclick=()=>{ const stg=DATA.stages.find(s=>s.id===b.dataset.guide); if(stg) openSightGuide(stg); });
+  };
   $("#geoBtn",wrap).onclick=()=>{ const b=$("#geoBtn",wrap); if(!navigator.geolocation){ toast(t("loc_fail")); return; } b.textContent=t("locating"); b.disabled=true;
-    navigator.geolocation.getCurrentPosition(p=>{ State.geo={lat:p.coords.latitude,lng:p.coords.longitude}; b.textContent="📍 "+(State.lang==="ja"?"現在地ON（近い順）":State.lang==="es"?"Ubicación activa":"Located"); render2(); },
+    navigator.geolocation.getCurrentPosition(p=>{ State.geo={lat:p.coords.latitude,lng:p.coords.longitude}; b.textContent="📍 "+(State.lang==="ja"?"現在地ON（近い順）":State.lang==="es"?"Ubicación activa":"Located"); render2(); renderDest(); },
       ()=>{ toast(t("loc_fail")); b.textContent=t("enable_loc"); b.disabled=false; }, {enableHighAccuracy:true,timeout:8000}); };
   render2();
+  renderDest();
   return wrap;
 }
 
