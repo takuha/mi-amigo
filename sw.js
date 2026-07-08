@@ -1,7 +1,7 @@
 // Mi Amigo — Service Worker（オフライン対応）
 // アプリ本体を端末にキャッシュ。電波が弱いアンティグアの路上でも起動・音声ガイド再生できる。
 // 方針：コード(html/js/css/json)は「ネット優先」＝更新を即反映。画像は「キャッシュ優先」＝オフラインでも軽快。
-const CACHE = "mi-amigo-v32";
+const CACHE = "mi-amigo-v33";
 const ASSETS = [
   "./",
   "./index.html",
