@@ -249,9 +249,9 @@ Object.assign(I18N.en,{ globe_title:"World Heritage map", globe_sub:"Complete th
 Object.assign(I18N.es,{ globe_title:"Mapa del Patrimonio", globe_sub:"Completa el rally para desbloquear el siguiente sitio", you_are_here:"Estás aquí", stage_open:"Abierto", stage_next:"Siguiente etapa", stage_locked:"Próximamente", stage_done:"Completado", st_stage:"Etapa", to_quest:"Ir al rally", to_guide:"Audioguía", complete_to_unlock:"Completa Antigua para desbloquear", locked_title:"Próximamente", locked_msg:"Este sitio aún no está listo. ¡Primero completa el rally de la Etapa 1 en Antigua!", stage_unlocked_toast:"🎉 ¡Antigua completada! Se desbloqueó la siguiente etapa", drag_hint:"Arrastra para girar el globo" });
 
 // 追加i18n（凡例＋観光地）
-Object.assign(I18N.ja,{ leg_heritage:"世界遺産", leg_sight:"観光地", leg_done:"制覇", leg_locked:"近日", sight_badge:"観光地", sight_soon:"ガイド準備中", sight_msg:"この観光地の音声ガイドは準備中です。ガイドを申し込むこともできます。", sight_guide_cta:"🎧 音声ガイド＆謎解き" });
-Object.assign(I18N.en,{ leg_heritage:"World Heritage", leg_sight:"Sights", leg_done:"Cleared", leg_locked:"Soon", sight_badge:"Sight", sight_soon:"Guide coming", sight_msg:"The audio guide for this spot is in the works. You can also request a guide.", sight_guide_cta:"🎧 Audio guide & rally" });
-Object.assign(I18N.es,{ leg_heritage:"Patrimonio", leg_sight:"Lugares", leg_done:"Completado", leg_locked:"Pronto", sight_badge:"Lugar turístico", sight_soon:"Guía en camino", sight_msg:"La audioguía de este lugar está en preparación. También puedes solicitar una guía.", sight_guide_cta:"🎧 Audioguía y rally" });
+Object.assign(I18N.ja,{ leg_heritage:"世界遺産", leg_sight:"観光地", leg_done:"制覇", leg_locked:"近日", sight_badge:"観光地", sight_soon:"ガイド準備中", sight_msg:"この観光地の音声ガイドは準備中です。ガイドを申し込むこともできます。", sight_guide_cta:"🎧 音声ガイド＆謎解き", sight_photos:"写真ミッション", sight_all_done:"🎉 全スポット制覇！すてきな旅を" });
+Object.assign(I18N.en,{ leg_heritage:"World Heritage", leg_sight:"Sights", leg_done:"Cleared", leg_locked:"Soon", sight_badge:"Sight", sight_soon:"Guide coming", sight_msg:"The audio guide for this spot is in the works. You can also request a guide.", sight_guide_cta:"🎧 Audio guide & rally", sight_photos:"Photo missions", sight_all_done:"🎉 All spots cleared! Enjoy the trip" });
+Object.assign(I18N.es,{ leg_heritage:"Patrimonio", leg_sight:"Lugares", leg_done:"Completado", leg_locked:"Pronto", sight_badge:"Lugar turístico", sight_soon:"Guía en camino", sight_msg:"La audioguía de este lugar está en preparación. También puedes solicitar una guía.", sight_guide_cta:"🎧 Audioguía y rally", sight_photos:"Misiones de foto", sight_all_done:"🎉 ¡Todos los lugares completados! Buen viaje" });
 
 // 追加i18n（次の目的地ガイド申込ボックス）
 Object.assign(I18N.ja,{ gr_cta:"🧭 次の行き先のガイドを申し込む", gr_locked_cta:"🧭 この遺産のガイドを申し込む", gr_title:"次の行き先のガイドを申し込む", gr_sub:"アンティグア制覇おめでとう！次はどこへ？いつ行く？教えてください。出発までにガイドを用意します。", gr_dest:"次に行く世界遺産", gr_other:"その他（自由入力）", gr_other_ph:"行き先を入力", gr_from:"いつから", gr_to:"いつまで", gr_period:"滞在期間", gr_name:"お名前", gr_msg:"ひとこと・要望", gr_msg_ph:"例: コーヒー農園も回りたい / スペイン語ガイド希望 など", gr_send:"📩 この内容で申し込む", gr_sent:"申込メールを作成しました。メールアプリで送信してください。", gr_need_dest:"行き先を入力してください", gr_mail_intro:"Mi Amigo ガイド申込です。次の行き先のガイド作成をお願いします。", gr_clear_at:"個コンプリートで次の遺産が解禁" });
@@ -375,7 +375,7 @@ I18N.zh = {
   biz_audience:"触达对象", biz_a1:"已完成电话验证的真实会员", biz_a2:"可按来源国、年龄、性别、兴趣定向", biz_a3:"正在安提瓜旅行中＝“正当下就消费”的高意愿人群",
   biz_products:"广告菜单", biz_p1:"赞助展示（“探索”置顶・广告标识）", biz_p2:"横幅广告", biz_p3:"赞助解谜地点（把贵店铺设为解谜点）", biz_p4:"定向推送通知（正式版）",
   biz_members:"当前注册会员（演示）", biz_people:"人", biz_inquiry:"广告投放咨询", biz_company:"公司名称", biz_person:"负责人姓名", biz_contact:"联系方式（邮箱/电话）", biz_budget:"预算区间（选填）", biz_message:"留言", biz_send:"发送", biz_sent:"已在邮件应用中生成咨询邮件", biz_note:"可将本页面的URL发送给企业。咨询将通过邮件送达。", biz_back:"返回应用",
-  leg_heritage:"世界遗产", leg_sight:"观光地", leg_done:"已通关", leg_locked:"即将开放", sight_badge:"观光地", sight_soon:"指南筹备中", sight_msg:"这个观光地的语音指南正在筹备中。你也可以申请，我们会尽快制作。", sight_guide_cta:"🎧 语音向导和解谜",
+  leg_heritage:"世界遗产", leg_sight:"观光地", leg_done:"已通关", leg_locked:"即将开放", sight_badge:"观光地", sight_soon:"指南筹备中", sight_msg:"这个观光地的语音指南正在筹备中。你也可以申请，我们会尽快制作。", sight_guide_cta:"🎧 语音向导和解谜", sight_photos:"拍照任务", sight_all_done:"🎉 全部地点通关！旅途愉快",
 };
 ORG_I18N.zh = { your_no:"你的会员编号", your_code:"你的邀请码", invite_title:"邀请好友", invite_sub:"通过此邀请码/URL注册的人，会成为你的伙伴（你介绍的同伴）", copy:"复制", copied:"已复制", share:"分享", org_chart:"组织图", members:"会员数", binary:"双轨（排位）", unilevel:"单层（推荐）", welcome_code:"你的邀请码已生成！", introduced_by:"推荐人", joined_via:"使用邀请码注册" };
 // 国名・ステージ名の中国語を DATA に補完（countryName / L() が zh を拾えるように）
@@ -1544,29 +1544,61 @@ function openStageSheet(stage, idx){
 // 観光地の音声ガイド＆謎解きビューア（一般ユーザー向け・世界遺産の制作プレビューとは別の公開版）
 function openSightGuide(stage){
   const c=stage.content; if(!c){ toast(t("sight_soon")); return; }
-  const stopsHtml=c.stops.map((s,i)=>`<div class="card" style="margin-bottom:10px"><div class="card-body">
-    <div class="row" style="align-items:flex-start"><div class="ava">${s.emoji}</div>
+  const stamps=DB.get(K.stamps,{})[State.user?.email]||{};
+  const done=c.stops.filter(s=>stamps[s.id]).length, total=c.stops.length;
+  const stopsHtml=c.stops.map((s,i)=>{ const got=!!stamps[s.id];
+    return `<div class="card" style="margin-bottom:10px"><div class="card-body">
+    <div class="row" style="align-items:flex-start"><div class="ava"${got?' style="background:#2c8c84;color:#fff"':""}>${got?"✓":s.emoji}</div>
       <div style="flex:1"><strong>${i+1}. ${esc(L(s.title))}</strong>
         <p class="muted" style="font-size:13px;margin:6px 0 0">${esc(L(s.narration))}</p></div></div>
     <button class="btn teal sm" data-play="${i}" style="width:100%;margin-top:12px">${t("play")}</button>
     <div class="card" style="margin-top:10px;background:rgba(232,163,45,.10)"><div class="card-body" style="padding:10px 12px">
-      <span class="badge cafe">🔍 ${t("dp_quest")}</span><p style="margin:6px 0 0;font-size:13px">${esc(L(s.riddle))}</p></div></div>
-  </div></div>`).join("");
+      <div class="row" style="align-items:center"><span class="badge cafe">🔍 ${t("dp_quest")}</span><span class="spacer"></span>${got?`<span class="badge stay">${t("checked")}</span>`:""}</div>
+      <p style="margin:6px 0 0;font-size:13px">${esc(L(s.riddle))}</p>
+      ${got?"":`<button class="btn gold sm" data-shot="${i}" style="width:100%;margin-top:10px">${t("ck_take")}</button>`}</div></div>
+  </div></div>`; }).join("");
   const histHtml=(c.history||[]).map((h,i)=>`<div class="card" style="margin-bottom:10px"><div class="card-body">
     <div class="row" style="align-items:flex-start"><div class="ava">${h.emoji}</div>
       <div style="flex:1"><strong>${esc(L(h.title))}</strong>
         <p class="muted" style="font-size:13px;margin:6px 0 0">${esc(L(h.body))}</p></div></div>
     <button class="btn teal sm" data-hist="${i}" style="width:100%;margin-top:12px">${t("play")}</button></div></div>`).join("");
   const back=openSheet(`<h2>${stage.flag} ${esc(L(stage.name))}</h2>
-    <p class="muted" style="font-size:13px;margin:2px 0 12px">${esc(L(stage.country))} ・ <span style="color:#3fae6a;font-weight:700">${t("sight_badge")}</span></p>
-    <p style="font-size:14px;margin:0 0 14px">${esc(L(c.intro))}</p>
+    <p class="muted" style="font-size:13px;margin:2px 0 10px">${esc(L(stage.country))} ・ <span style="color:#3fae6a;font-weight:700">${t("sight_badge")}</span></p>
+    <p style="font-size:14px;margin:0 0 12px">${esc(L(c.intro))}</p>
+    <div class="card" style="margin:0 0 12px;background:rgba(44,140,132,.10)"><div class="card-body" style="padding:10px 12px">
+      <div class="row" style="align-items:center"><strong style="font-size:14px">📸 ${t("sight_photos")}</strong><span class="spacer"></span><strong style="font-size:15px;color:var(--teal)">${done} / ${total}</strong></div>
+      <div style="height:8px;border-radius:5px;background:rgba(150,150,150,.25);margin-top:8px;overflow:hidden"><div style="height:100%;width:${total?Math.round(done/total*100):0}%;background:#2c8c84"></div></div></div></div>
     <div class="section-title" style="margin-top:0">🎧🔍 ${t("dp_stops")}（${c.stops.length}）</div>${stopsHtml}
     ${histHtml?`<div class="section-title">📜 ${t("listen_history")}</div>${histHtml}`:""}
     <button class="btn gold" id="sgMap" style="margin-top:6px">${t("go_here")}</button>
     <p class="hint" style="text-align:center;margin-top:14px">${t("tts_note")}</p>`);
   back.querySelectorAll("[data-play]").forEach(b=>b.onclick=()=>{ const s=c.stops[+b.dataset.play]; openPlayer({emoji:s.emoji,title:s.title,text:s.narration}); });
   back.querySelectorAll("[data-hist]").forEach(b=>b.onclick=()=>{ const h=c.history[+b.dataset.hist]; openPlayer({emoji:h.emoji,title:h.title,text:h.body}); });
+  back.querySelectorAll("[data-shot]").forEach(b=>b.onclick=()=>openSightCheckin(stage, c.stops[+b.dataset.shot]));
   $("#sgMap",back).onclick=()=>window.open(`https://www.google.com/maps/search/?api=1&query=${stage.lat},${stage.lng}`,"_blank","noopener");
+}
+// 観光地スポットの写真ミッション：撮影→アルバム保存＋端末保存＋クラウド同期＋スタンプGET
+function openSightCheckin(stage, spot){
+  const tag=stage.id.charAt(0).toUpperCase()+stage.id.slice(1);
+  const back=openSheet(`<h2>${spot.emoji} ${esc(L(spot.title))}</h2>
+    <div class="card"><div class="card-body"><span class="badge cafe">🔍 ${t("dp_quest")}</span><p style="margin:8px 0 0">${esc(L(spot.riddle))}</p></div></div>
+    <p class="muted" style="font-size:13px;margin:4px 2px 14px">${t("ck_hint")}</p>
+    <label class="btn gold" for="camInput">${t("ck_take")}</label>
+    <input id="camInput" type="file" accept="image/*" capture="environment" style="display:none" />
+    <button class="btn ghost" id="ckBack" style="margin-top:8px">${t("back")}</button>`);
+  $("#ckBack",back).onclick=()=>openSightGuide(stage);
+  $("#camInput",back).onchange=async e=>{ const file=e.target.files[0]; if(!file) return; const lbl=back.querySelector('label[for="camInput"]'); lbl.textContent=t("processing");
+    try{ const dataUrl=await fileToResizedDataUrl(file);
+      const album=DB.get(K.album,[]); const photoRec={id:"p"+Date.now(),userEmail:State.user.email,spotId:spot.id,place:L(spot.title),dataUrl,caption:`${L(spot.title)} — ${L(stage.name)}, Guatemala 🌋 #MiAmigo #${tag}`,createdAt:Date.now()}; album.unshift(photoRec); DB.set(K.album,album);
+      savePhotoToDevice(dataUrl, `miamigo_${spot.id||"photo"}_${Date.now()}.jpg`);
+      const all=DB.get(K.stamps,{}); all[State.user.email]={...(all[State.user.email]||{}),[spot.id]:true}; DB.set(K.stamps,all);
+      Cloud.savePhotoCloud(photoRec);
+      Cloud.saveUserData({ stamps: all[State.user.email] });
+      const sd=stage.content.stops.filter(s=>all[State.user.email][s.id]).length, allDone=sd>=stage.content.stops.length;
+      toast(allDone?t("sight_all_done"):t("ck_done"));
+      openSightGuide(stage);
+    }catch{ toast(t("ck_fail")); lbl.textContent=t("ck_take"); }
+  };
 }
 
 /* ---------- マイページ（言語変更＋予約一覧） ---------- */
