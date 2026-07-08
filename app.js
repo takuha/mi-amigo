@@ -184,8 +184,8 @@ function avatarHTML(rec, size){
 }
 
 /* ---------- i18n ---------- */
-const LANGS = [["ja","日本語"],["en","English"],["es","Español"]];
-const LANG_CODE = { ja:"ja-JP", en:"en-US", es:"es-ES" };
+const LANGS = [["ja","日本語"],["en","English"],["es","Español"],["zh","中文"]];
+const LANG_CODE = { ja:"ja-JP", en:"en-US", es:"es-ES", zh:"zh-CN" };
 const I18N = {
   ja:{ tab_discover:"探す", tab_quest:"謎解き", tab_guide:"ガイド", tab_map:"マップ", tab_album:"アルバム", tab_mypage:"アミーゴ",
     tagline:"アンティグアを、もっと面白く歩こう。", register:"新規登録", login:"ログイン", name:"お名前 / ニックネーム", email:"メールアドレス", password:"パスワード", pw_ph:"6文字以上",
@@ -247,6 +247,11 @@ Object.assign(I18N.es,{ age:"Edad", gender:"Género", g_m:"Hombre", g_f:"Mujer",
 Object.assign(I18N.ja,{ globe_title:"世界遺産マップ", globe_sub:"謎解きをコンプリートして次の遺産へ", you_are_here:"今ここ", stage_open:"解禁中", stage_next:"次のステージ", stage_locked:"近日公開", stage_done:"コンプリート", st_stage:"ステージ", to_quest:"謎解きへ", to_guide:"音声ガイドへ", complete_to_unlock:"アンティグアをコンプリートで解禁", locked_title:"近日公開", locked_msg:"この世界遺産はまだ準備中です。まずは第1ステージ「アンティグア」の謎解きをコンプリートしよう！", stage_unlocked_toast:"🎉 アンティグア制覇！次のステージが解禁されました", drag_hint:"ドラッグで地球をまわせます" });
 Object.assign(I18N.en,{ globe_title:"World Heritage map", globe_sub:"Complete the rally to unlock the next site", you_are_here:"You are here", stage_open:"Open", stage_next:"Next stage", stage_locked:"Coming soon", stage_done:"Completed", st_stage:"Stage", to_quest:"Go to rally", to_guide:"Audio guide", complete_to_unlock:"Complete Antigua to unlock", locked_title:"Coming soon", locked_msg:"This site isn't ready yet. First complete the Stage 1 rally in Antigua!", stage_unlocked_toast:"🎉 Antigua cleared! The next stage is unlocked", drag_hint:"Drag to spin the globe" });
 Object.assign(I18N.es,{ globe_title:"Mapa del Patrimonio", globe_sub:"Completa el rally para desbloquear el siguiente sitio", you_are_here:"Estás aquí", stage_open:"Abierto", stage_next:"Siguiente etapa", stage_locked:"Próximamente", stage_done:"Completado", st_stage:"Etapa", to_quest:"Ir al rally", to_guide:"Audioguía", complete_to_unlock:"Completa Antigua para desbloquear", locked_title:"Próximamente", locked_msg:"Este sitio aún no está listo. ¡Primero completa el rally de la Etapa 1 en Antigua!", stage_unlocked_toast:"🎉 ¡Antigua completada! Se desbloqueó la siguiente etapa", drag_hint:"Arrastra para girar el globo" });
+
+// 追加i18n（凡例＋観光地）
+Object.assign(I18N.ja,{ leg_heritage:"世界遺産", leg_sight:"観光地", leg_done:"制覇", leg_locked:"近日", sight_badge:"観光地", sight_soon:"ガイド準備中", sight_msg:"この観光地の音声ガイドは準備中です。ガイドを申し込むこともできます。" });
+Object.assign(I18N.en,{ leg_heritage:"World Heritage", leg_sight:"Sights", leg_done:"Cleared", leg_locked:"Soon", sight_badge:"Sight", sight_soon:"Guide coming", sight_msg:"The audio guide for this spot is in the works. You can also request a guide." });
+Object.assign(I18N.es,{ leg_heritage:"Patrimonio", leg_sight:"Lugares", leg_done:"Completado", leg_locked:"Pronto", sight_badge:"Lugar turístico", sight_soon:"Guía en camino", sight_msg:"La audioguía de este lugar está en preparación. También puedes solicitar una guía." });
 
 // 追加i18n（次の目的地ガイド申込ボックス）
 Object.assign(I18N.ja,{ gr_cta:"🧭 次の行き先のガイドを申し込む", gr_locked_cta:"🧭 この遺産のガイドを申し込む", gr_title:"次の行き先のガイドを申し込む", gr_sub:"アンティグア制覇おめでとう！次はどこへ？いつ行く？教えてください。出発までにガイドを用意します。", gr_dest:"次に行く世界遺産", gr_other:"その他（自由入力）", gr_other_ph:"行き先を入力", gr_from:"いつから", gr_to:"いつまで", gr_period:"滞在期間", gr_name:"お名前", gr_msg:"ひとこと・要望", gr_msg_ph:"例: コーヒー農園も回りたい / スペイン語ガイド希望 など", gr_send:"📩 この内容で申し込む", gr_sent:"申込メールを作成しました。メールアプリで送信してください。", gr_need_dest:"行き先を入力してください", gr_mail_intro:"Mi Amigo ガイド申込です。次の行き先のガイド作成をお願いします。", gr_clear_at:"個コンプリートで次の遺産が解禁" });
@@ -334,6 +339,52 @@ Object.assign(I18N.es,{ pr:"AD", biz_open:"🏢 Para empresas (publicidad)", biz
   biz_audience:"A quién llegas", biz_a1:"Miembros reales verificados por teléfono", biz_a2:"Segmenta por país, edad, género, intereses", biz_a3:"Visitantes en Antigua ahora — alta intención de gasto",
   biz_products:"Menú de anuncios", biz_p1:"Anuncio patrocinado (arriba en Explorar, etiqueta AD)", biz_p2:"Banners", biz_p3:"Parada patrocinada del rally (tu negocio en el rally)", biz_p4:"Notificaciones push segmentadas (producción)",
   biz_members:"Miembros ahora (demo)", biz_people:"", biz_inquiry:"Consulta de publicidad", biz_company:"Empresa", biz_person:"Nombre de contacto", biz_contact:"Contacto (correo/teléfono)", biz_budget:"Presupuesto (opcional)", biz_message:"Mensaje", biz_send:"Enviar", biz_sent:"Consulta abierta en tu correo", biz_note:"Comparte la URL de esta página con empresas. Las consultas llegan por correo.", biz_back:"Volver a la app" });
+
+/* ===== 简体中文 (zh) ===== */
+I18N.zh = {
+  tab_discover:"探索", tab_quest:"解谜", tab_guide:"向导", tab_map:"地图", tab_album:"相册", tab_mypage:"伙伴",
+  tagline:"用全新的方式漫步安提瓜。", register:"注册", login:"登录", name:"姓名 / 昵称", email:"邮箱", password:"密码", pw_ph:"6位以上",
+  create:"创建账户", login_btn:"登录", choose_lang:"选择语言 / Language", proto_note:"这是原型版本。数据仅保存在本设备上。",
+  welcome:"欢迎", discover_sub:"预订安提瓜的体验、咖啡馆和住宿", book:"预订", per:"人", official:"官方网站",
+  pick_date:"选择日期即可查看当天的余位", booking_detail:"预订内容", remaining:"剩余余位", people:"人", total:"合计", pay_confirm:"💳 付款并确认预订", no_charge:"※ 原型版本，不会产生实际扣款", slots_max:"已达余位上限",
+  pay_title:"💳 付款", plan:"方案", date:"日期", num:"人数", cardno:"卡号（示例）", expiry:"有效期", pay_now:"支付", back:"返回", processing:"处理中…", booked:"✅ 预订已确认！",
+  quest_sub:"寻找向导中讲述的“地点”并拍照吧", progress:"进度", checkin:"签到", photo:"照片", checked:"✅ 已发布照片", reward_done:"🗝️ 下一个副本出现！", reward_left:"个即可解锁下一个副本",
+  ck_take:"📷 拍摄 / 选择照片", ck_later:"稍后", ck_hint:"在这里拍张照片（无需露脸）。照片会保存到相册，还能分享到社交媒体扩散。", ck_done:"📸 照片已发布！获得印章", ck_fail:"照片加载失败",
+  guide_sub:"🎧 边走边听的语音向导", walk_route:"街区漫步路线", listen_history:"聆听历史", play:"▶ 播放", stop:"■ 停止", tts_note:"※ 目前由设备语音合成(TTS)朗读。之后将替换为录制的音频。", reading:"朗读中…", replay:"↻ 再听一次", close:"关闭", no_tts:"本设备不支持语音朗读",
+  map_sub:"用GPS从当前位置出发，用谷歌地图导航", enable_loc:"📍 获取当前位置并按由近到远排序", locating:"正在获取当前位置…", loc_fail:"无法获取当前位置", go_here:"🧭 去这里（谷歌地图）", open_map:"🗺️ 在地图中打开", away:"约", km_away:"公里", all_route:"🗺️ 在地图上查看完整路线",
+  album_sub:"把发布的照片分享到5个社交平台", album_empty:"还没有照片。", go_quest:"去解谜", caption:"文案（社交发布文字）", share_to:"发布（5个平台）", save_photo:"📥 将照片保存到设备", other_share:"用其他应用分享（含照片）", delete_photo:"删除这张照片", taken:"拍摄于", deleted:"已删除", copied:"已复制发布文案。请在应用中粘贴后发布", shared:"已分享！",
+  mypage_sub:"", reservations:"预订列表", no_resv:"还没有预订。快从“探索”里预订看看吧。", confirmed:"已确认", logout:"退出登录", language:"语言 / Language", proto_ver:"Mi Amigo — Antigua, Guatemala 🌋",
+  err_exists:"该邮箱已被注册", err_nouser:"找不到账户", err_pass:"密码错误", err_email:"邮箱格式不正确", err_pwlen:"密码需至少6位", err_name:"请输入你的姓名",
+  tab_community:"伙伴", community_sub:"和旅途中认识的伙伴连接起来吧（世界青旅氛围）", groups:"群组", create_group:"＋ 创建群组", new_group_ph:"请输入群组名称", group_created:"群组已创建", open_chat:"打开", msg_ph:"输入消息…", send:"发送", you:"你", share_here:"📍 我现在在这里", here_now:"📍 我现在在这里！", here_shared:"已共享当前位置", loc_link:"在地图上查看", demo_chat_note:"原型：消息仅为本设备上的演示。要和伙伴实时共享需要服务器连接。", profile:"个人资料", edit_profile:"编辑", amigo_name:"伙伴名 / 昵称", profile_photo:"头像", add_photo:"📷 选择照片", bio:"一句话简介", bio_ph:"例：热爱咖啡与火山的旅人", save:"保存", profile_saved:"个人资料已保存",
+  age:"年龄", gender:"性别", g_m:"男", g_f:"女", g_o:"其他", g_na:"不愿透露", from_country:"来自", proud:"你喜爱的国家（可多选）", proud_hint:"添加你喜爱或引以为傲的国家", add_country:"＋ 添加", select_ph:"选择…", optional:"（选填）",
+  amigo_card:"伙伴卡", make_card:"🎫 制作我的伙伴卡", save_card:"📥 保存图片", share_card:"📲 分享扩散", card_from:"来自", card_loves:"喜爱的国家", card_stamps:"收集的印章", card_made:"卡片已保存", card_tagline:"漫步安提瓜",
+  card_what:"把你的旅行资料变成一张图片。分享到社交媒体邀请好友吧（含邀请码）", card_invite:"邀请码",
+  globe_title:"世界遗产地图", globe_sub:"完成解谜，前往下一处遗产", you_are_here:"当前位置", stage_open:"开放中", stage_next:"下一关", stage_locked:"即将开放", stage_done:"已完成", st_stage:"关卡", to_quest:"去解谜", to_guide:"去语音向导", complete_to_unlock:"完成安提瓜后解锁", locked_title:"即将开放", locked_msg:"这处世界遗产还在筹备中。先去完成第1关“安提瓜”的解谜吧！", stage_unlocked_toast:"🎉 攻克安提瓜！下一关已解锁", drag_hint:"拖动即可转动地球",
+  gr_cta:"🧭 申请下一个目的地的向导", gr_locked_cta:"🧭 申请这处遗产的向导", gr_title:"申请下一站的向导", gr_sub:"恭喜攻克安提瓜！接下来去哪里？什么时候去？告诉我们，我们会在你出发前准备好向导。", gr_dest:"下一处世界遗产", gr_other:"其他（自由填写）", gr_other_ph:"输入目的地", gr_from:"从何时", gr_to:"到何时", gr_period:"停留期间", gr_name:"姓名", gr_msg:"留言・需求", gr_msg_ph:"例：也想逛咖啡庄园 / 希望西语向导 等", gr_send:"📩 按此内容申请", gr_sent:"已生成申请邮件。请在邮件应用中发送。", gr_need_dest:"请输入目的地", gr_mail_intro:"这是 Mi Amigo 向导申请。请为我的下一站制作向导。", gr_clear_at:"个即可解锁下一处遗产",
+  vote_title:"为下一个开拓地投票", vote_sub:"为你想去的世界遗产投票。集满10票，该地点就会在应用中被开拓（制作向导和解谜）。", vote_btn:"我想去！投票", voted:"已投票 ✓", votes_unit:"票", votes_left:"票即可开始开拓", vote_status:"投票进行中", vote_pioneered:"开拓已确定", vote_pioneered_note:"开拓已确定！向导筹备中", vote_pioneered_msg:"经大家投票，开拓已确定！向导和解谜正在筹备中，敬请期待上线。", vote_stage_msg:"想来这里的人快投票吧。满10票即开始开拓，制作向导和解谜。", vote_remain1:"还差", vote_remain2:"票即可开拓", vote_just_pioneered:"🎉 达成10票！该地点的开拓已确定", vote_hero_cta:"🗳️ 为下一个开拓地投票", vote_open_note:"你可以为下一个开拓地投票",
+  community_section:"加入社群", community_note:"和应用里的伙伴连接起来吧。下一个开拓地的消息也会在这里发布！", community_soon:"筹备中",
+  notif_section:"通知", notif_enable:"开启通知", notif_on:"已开启通知", notif_off:"通知仍为关闭状态", notif_empty:"还没有通知", notif_unsupported:"本设备不支持通知", nt_decided:"开拓已确定", nt_publish_suffix:" — 请发布向导和解谜", nt_unlocked_suffix:"已被开拓！将新增向导和解谜", ta_now:"刚刚", ta_min:"分钟前", ta_hour:"小时前", ta_day:"天前",
+  admin_section:"制作下一个副本（TAKUHA专用）", admin_only:"此功能仅TAKUHA可查看", admin_empty:"还没有制作中的副本。", admin_notify:"开拓已确定！请发布该副本的向导和解谜。", dp_open:"🔧 预览向导和解谜", dp_admin_note:"TAKUHA专用预览（对普通用户不公开）", dp_stops:"地点（向导和解谜）", dp_history:"聆听历史", dp_guide:"向导", dp_quest:"解谜", dp_publish_hint:"确认内容后，点“发布”向普通用户开放（发布功能将在下一阶段实现）。", no_content:"该副本的内容尚未制作。",
+  contact_to:"联系方式", contact_section:"联系我们", contact_note:"向导申请、意见、疑问请发到这里，会送达运营方。", fb_cta:"💬 畅所欲言留言箱", fb_title:"畅所欲言留言箱", fb_sub:"意见、需求、咨询，什么都可以。会送达运营方。", fb_msg:"留言", fb_msg_ph:"输入留言…", fb_send:"📩 发送", fb_need:"请输入留言",
+  sms_sending:"正在发送短信…", sms_sent_real:"短信已发送📩", code_real_hint:"请输入短信收到的6位验证码", err_sms:"短信发送失败。请确认号码（含国家区号）", verifying:"验证中…",
+  sub_sent:"已发送。已送达运营方 ✅", subs_section:"📥 申请・咨询一览", subs_empty:"还没有申请或咨询。", subs_offline:"未连接云端，无法显示列表。", t_guide:"向导申请", t_feedback:"意见", t_biz:"广告投放",
+  phone:"电话号码", phone_ph:"电话号码（不含连字符）", send_code:"发送验证码", code:"验证码", code_ph:"6位验证码", verify:"验证并继续", nick_new:"姓名 / 昵称（新用户）", demo_code:"演示验证码", sms_note:"我们会通过短信发送6位验证码给你。", code_sent:"验证码已发送", err_phone:"请输入电话号码", err_code:"验证码不正确",
+  continue_google:"使用 Google 继续", continue_email:"使用邮箱继续", or_phone:"或使用电话号码", email_label:"邮箱", email_ph:"you@email.com", email_send_link:"发送登录链接", email_note:"无需密码。只需打开我们发到邮箱的链接即可登录。", email_sent_title:"请查收邮件", email_sent_body:"已发送登录链接📩 请打开邮件中的链接：", email_err:"邮件发送失败。请确认邮箱地址。", google_err:"Google 登录失败。请再试一次。", signing_in:"登录中…", email_confirm_prompt:"请输入邮箱地址以确认",
+  email_code_note:"我们会向你的邮箱发送6位验证码。※ 正式邮件发送功能正在准备中（目前演示验证码会显示在屏幕上）。",
+  pr:"广告", biz_open:"🏢 企业请看（广告投放）", biz_title:"致企业｜广告投放", biz_hero:"精准触达正在漫步安提瓜的旅行者。",
+  biz_audience:"触达对象", biz_a1:"已完成电话验证的真实会员", biz_a2:"可按来源国、年龄、性别、兴趣定向", biz_a3:"正在安提瓜旅行中＝“正当下就消费”的高意愿人群",
+  biz_products:"广告菜单", biz_p1:"赞助展示（“探索”置顶・广告标识）", biz_p2:"横幅广告", biz_p3:"赞助解谜地点（把贵店铺设为解谜点）", biz_p4:"定向推送通知（正式版）",
+  biz_members:"当前注册会员（演示）", biz_people:"人", biz_inquiry:"广告投放咨询", biz_company:"公司名称", biz_person:"负责人姓名", biz_contact:"联系方式（邮箱/电话）", biz_budget:"预算区间（选填）", biz_message:"留言", biz_send:"发送", biz_sent:"已在邮件应用中生成咨询邮件", biz_note:"可将本页面的URL发送给企业。咨询将通过邮件送达。", biz_back:"返回应用",
+  leg_heritage:"世界遗产", leg_sight:"观光地", leg_done:"已通关", leg_locked:"即将开放", sight_badge:"观光地", sight_soon:"指南筹备中", sight_msg:"这个观光地的语音指南正在筹备中。你也可以申请，我们会尽快制作。",
+};
+ORG_I18N.zh = { your_no:"你的会员编号", your_code:"你的邀请码", invite_title:"邀请好友", invite_sub:"通过此邀请码/URL注册的人，会成为你的伙伴（你介绍的同伴）", copy:"复制", copied:"已复制", share:"分享", org_chart:"组织图", members:"会员数", binary:"双轨（排位）", unilevel:"单层（推荐）", welcome_code:"你的邀请码已生成！", introduced_by:"推荐人", joined_via:"使用邀请码注册" };
+// 国名・ステージ名の中国語を DATA に補完（countryName / L() が zh を拾えるように）
+const ZH_COUNTRIES = { JP:"日本", GT:"危地马拉", US:"美国", CA:"加拿大", MX:"墨西哥", ES:"西班牙", FR:"法国", DE:"德国", GB:"英国", IT:"意大利", NL:"荷兰", CH:"瑞士", PT:"葡萄牙", IE:"爱尔兰", SE:"瑞典", NO:"挪威", AU:"澳大利亚", NZ:"新西兰", BR:"巴西", AR:"阿根廷", CL:"智利", CO:"哥伦比亚", PE:"秘鲁", CR:"哥斯达黎加", SV:"萨尔瓦多", HN:"洪都拉斯", NI:"尼加拉瓜", BZ:"伯利兹", KR:"韩国", CN:"中国", TW:"台湾", TH:"泰国", IN:"印度", IL:"以色列", ZA:"南非", PL:"波兰" };
+const ZH_STAGES = { antigua:{name:"安提瓜危地马拉",country:"危地马拉"}, tikal:{name:"蒂卡尔遗址",country:"危地马拉"}, copan:{name:"科潘玛雅遗址",country:"洪都拉斯"}, chichen:{name:"奇琴伊察",country:"墨西哥"}, machupicchu:{name:"马丘比丘",country:"秘鲁"}, cusco:{name:"库斯科历史城区",country:"秘鲁"}, angkor:{name:"吴哥窟",country:"柬埔寨"}, rome:{name:"罗马历史中心",country:"意大利"},
+  atitlan:{name:"阿蒂特兰湖",country:"危地马拉",blurb:"被三座火山环抱、世界屈指的美丽湖泊。环游湖畔的村庄十分惬意。"},
+  monterrico:{name:"蒙特里科",country:"危地马拉",blurb:"以黑沙海滩和海龟产卵闻名的太平洋岸小镇。"} };
+try{ (DATA.countries||[]).forEach(c=>{ if(ZH_COUNTRIES[c.c]) c.zh=ZH_COUNTRIES[c.c]; });
+  (DATA.stages||[]).forEach(s=>{ const z=ZH_STAGES[s.id]; if(z){ if(s.name&&z.name)s.name.zh=z.name; if(s.country&&z.country)s.country.zh=z.country; if(s.blurb&&z.blurb)s.blurb.zh=z.blurb; } }); }catch(e){ console.warn("zh patch",e); }
 
 function t(key){ const L=State.lang; return (I18N[L] && I18N[L][key]) || I18N.ja[key] || key; }
 function country(code){ return (DATA.countries||[]).find(c=>c.c===code); }
@@ -610,15 +661,15 @@ function viewAuth(){
 /* ---------- 探す（多言語） ---------- */
 function viewDiscover(){
   const wrap=el(`<div><div class="topbar"><h1>${t("tab_discover")}</h1><p class="sub">${t("discover_sub")}</p></div><div class="pad" id="listings"></div></div>`);
-  const labels={ exp:["exp",{ja:"体験",en:"Experience",es:"Experiencia"}], food:["food",{ja:"飲食",en:"Food",es:"Comida"}], stay:["stay",{ja:"宿",en:"Stay",es:"Hospedaje"}] };
+  const labels={ exp:["exp",{ja:"体験",en:"Experience",es:"Experiencia",zh:"体验"}], food:["food",{ja:"飲食",en:"Food",es:"Comida",zh:"餐饮"}], stay:["stay",{ja:"宿",en:"Stay",es:"Hospedaje",zh:"住宿"}] };
   const root=$("#listings",wrap);
   // スポンサー枠（デモ）— 広告主の体験がここに表示される
   const spon=el(`<div class="card">
     <div class="thumb" style="background:linear-gradient(135deg,#1d7a73,#145c57);color:#fff;font-size:46px">🌋</div>
     <div class="card-body">
       <span class="badge" style="background:#2a211c;color:#fff">${t("pr")}</span>
-      <h3 style="margin:8px 0 4px;font-size:17px">Volcán Acatenango — ${({ja:"日の出トレック",en:"Sunrise Trek",es:"Trek al amanecer"})[State.lang]}</h3>
-      <p class="muted" style="margin:0 0 10px;font-size:13px">${({ja:"火山の夜明けを見る1泊トレック（提携ツアー枠）",en:"Overnight trek to a volcano sunrise (partner ad slot)",es:"Trek nocturno al amanecer del volcán (espacio de socio)"})[State.lang]}</p>
+      <h3 style="margin:8px 0 4px;font-size:17px">Volcán Acatenango — ${({ja:"日の出トレック",en:"Sunrise Trek",es:"Trek al amanecer",zh:"日出徒步"})[State.lang]}</h3>
+      <p class="muted" style="margin:0 0 10px;font-size:13px">${({ja:"火山の夜明けを見る1泊トレック（提携ツアー枠）",en:"Overnight trek to a volcano sunrise (partner ad slot)",es:"Trek nocturno al amanecer del volcán (espacio de socio)",zh:"观赏火山日出的一夜徒步（合作旅游位）"})[State.lang]}</p>
       <button class="btn sm teal" id="sponsorBtn">${t("book")}</button>
     </div></div>`);
   $("#sponsorBtn",spon).onclick=()=>toast("（デモ）"+t("pr")+": "+t("biz_p1"));
@@ -645,13 +696,13 @@ function openBooking(listing){
   const back=openSheet(`<h2>${listing.emoji} ${esc(L(listing.title))}</h2><p class="muted" style="margin:-8px 0 14px;font-size:13px">${t("pick_date")}</p><div id="calMount"></div><div id="bookPanel"></div>`);
   function renderCal(){
     const {year,month}=State.cal; const first=new Date(year,month,1).getDay(); const days=new Date(year,month+1,0).getDate();
-    const dows=({ja:["日","月","火","水","木","金","土"],en:["Su","Mo","Tu","We","Th","Fr","Sa"],es:["Do","Lu","Ma","Mi","Ju","Vi","Sa"]})[State.lang];
+    const dows=({ja:["日","月","火","水","木","金","土"],en:["Su","Mo","Tu","We","Th","Fr","Sa"],es:["Do","Lu","Ma","Mi","Ju","Vi","Sa"],zh:["日","一","二","三","四","五","六"]})[State.lang];
     const today=new Date(); today.setHours(0,0,0,0);
     let cells=dows.map(d=>`<div class="cal-dow">${d}</div>`).join("");
     for(let i=0;i<first;i++) cells+=`<div class="cal-cell empty"></div>`;
     for(let d=1;d<=days;d++){ const dk=dateKey(year,month,d); const cd=new Date(year,month,d); const past=cd<today; const rem=remainingFor(listing,dk); const full=rem<=0;
       const cls=["cal-cell",past?"past":"",full&&!past?"full":"",selected===dk?"sel":""].join(" ");
-      const txt=past?"":(full?(State.lang==="ja"?"満":"x"):(State.lang==="ja"?"残"+rem:rem));
+      const txt=past?"":(full?(State.lang==="ja"?"満":State.lang==="zh"?"满":"x"):(State.lang==="ja"?"残"+rem:State.lang==="zh"?"余"+rem:rem));
       cells+=`<div class="${cls}" data-dk="${past||full?"":dk}"><span class="d">${d}</span><span class="slots">${txt}</span>${!past&&!full?'<span class="dot"></span>':""}</div>`; }
     const m=$("#calMount",back); m.innerHTML=`<div class="cal"><div class="cal-head"><button id="pm">‹</button><strong>${year} / ${month+1}</strong><button id="nm">›</button></div><div class="cal-grid">${cells}</div></div>`;
     $("#pm",m).onclick=()=>{ State.cal.month--; if(State.cal.month<0){State.cal.month=11;State.cal.year--;} renderCal(); };
@@ -1247,59 +1298,103 @@ function notifyPioneer(stage){ const nm=L(stage.name);
 function timeAgo(ts){ const s=Math.max(0,Math.floor((Date.now()-ts)/1000)); if(s<60)return t("ta_now"); const m=Math.floor(s/60); if(m<60)return m+t("ta_min"); const h=Math.floor(m/60); if(h<24)return h+t("ta_hour"); return Math.floor(h/24)+t("ta_day"); }
 // idx0=アンティグア（done/open）。他は 10票到達=pioneered（開拓決定）／アンティグア制覇済みなら voting（投票受付）／未制覇は locked。
 function stageStatus(stage, idx, stages){
+  if(stage.type==="sight") return "sight";            // 観光地＝世界遺産の解禁フロー外・常に表示
   if(idx===0) return stageComplete(stage)?"done":"open";
   if(stagePioneered(stage)) return "pioneered";
   if(stageComplete(stages[0])) return "voting";
   return "locked";
 }
+// 世界遺産だけを対象にした一覧（開拓投票・ガイド申込などのステージ）。観光地は含めない。
+function heritageStages(){ return DATA.stages.filter(s=>s.questSource!=="antigua" && s.type!=="sight"); }
 let _globeRAF=0;
 function mountGlobe(canvas, stages, onPick){
   if(!canvas) return;
   cancelAnimationFrame(_globeRAF);
   const ctx=canvas.getContext("2d"), D2R=Math.PI/180;
+  const now=()=>(window.performance&&performance.now)?performance.now():Date.now();
   let lon0=stages[0].lng, lat0=14, dragging=false, moved=false, lastX=0, lastY=0, lastInteract=0;
+  let spin=0, tiltV=0, lastT=now(), lastMoveT=now();     // 回転の角速度（度/秒）＝慣性
+  const IDLE=4.5;                                          // アイドル自動自転（度/秒）
   function project(lat,lng,cx,cy,R){ const lam=(lng-lon0)*D2R, phi=lat*D2R, p0=lat0*D2R;
     const cosc=Math.sin(p0)*Math.sin(phi)+Math.cos(p0)*Math.cos(phi)*Math.cos(lam);
     const x=R*Math.cos(phi)*Math.sin(lam), y=R*(Math.cos(p0)*Math.sin(phi)-Math.sin(p0)*Math.cos(phi)*Math.cos(lam));
     return {x:cx+x, y:cy-y, front:cosc>0}; }
   function front(lat,lng){ const lam=(lng-lon0)*D2R, phi=lat*D2R, p0=lat0*D2R; return (Math.sin(p0)*Math.sin(phi)+Math.cos(p0)*Math.cos(phi)*Math.cos(lam))>0; }
   function size(){ const r=canvas.getBoundingClientRect(), dpr=Math.min(window.devicePixelRatio||1,2); canvas.width=Math.round(r.width*dpr); canvas.height=Math.round(r.height*dpr); ctx.setTransform(dpr,0,0,dpr,0,0); return {w:r.width,h:r.height}; }
-  function color(st){ return st==="open"?"#e8a33d": (st==="done"||st==="pioneered")?"#2c8c84": st==="voting"?"#e8a33d":"#8a8f98"; }
-  function pin(cx,cy,c,scale,alpha,pulse){ ctx.save(); ctx.globalAlpha=alpha; const r=7*scale;
-    if(pulse){ ctx.beginPath(); ctx.arc(cx,cy-r*2.8,10+8*pulse,0,7); ctx.strokeStyle=c; ctx.globalAlpha=alpha*(1-pulse); ctx.lineWidth=2; ctx.stroke(); ctx.globalAlpha=alpha; }
+  // 観光地=緑 / 世界遺産=金。ロックはグレー。状態はマーカー（✓）で区別。
+  function pinColor(stage, ss){ if(ss==="locked") return "#98a0ab"; return stage.type==="sight" ? "#35b06a" : "#eaa72e"; }
+  function pin(cx,cy,c,scale,alpha,pulse,mark){ const r=7.5*scale, hy=cy-r*2.8;
+    ctx.save(); ctx.globalAlpha=alpha;
+    if(pulse){ ctx.beginPath(); ctx.arc(cx,hy,10+9*pulse,0,7); ctx.strokeStyle=c; ctx.globalAlpha=alpha*(1-pulse); ctx.lineWidth=2.2; ctx.stroke(); ctx.globalAlpha=alpha; }
+    ctx.shadowColor="rgba(0,0,0,0.35)"; ctx.shadowBlur=6; ctx.shadowOffsetY=2;
     ctx.beginPath(); ctx.moveTo(cx,cy);
-    ctx.bezierCurveTo(cx-r*0.9,cy-r*1.6, cx-r,cy-r*2.4, cx-r,cy-r*2.8);
-    ctx.arc(cx,cy-r*2.8,r,Math.PI,0);
+    ctx.bezierCurveTo(cx-r*0.9,cy-r*1.6, cx-r,cy-r*2.4, cx-r,hy);
+    ctx.arc(cx,hy,r,Math.PI,0);
     ctx.bezierCurveTo(cx+r,cy-r*2.4, cx+r*0.9,cy-r*1.6, cx,cy);
     ctx.closePath(); ctx.fillStyle=c; ctx.fill();
-    ctx.beginPath(); ctx.arc(cx,cy-r*2.8,r*0.42,0,7); ctx.fillStyle="#fff"; ctx.fill(); ctx.restore(); }
+    ctx.shadowColor="transparent"; ctx.shadowBlur=0; ctx.shadowOffsetY=0;
+    ctx.beginPath(); ctx.arc(cx,hy,r*0.46,0,7); ctx.fillStyle="#fff"; ctx.fill();
+    if(mark==="check"){ ctx.strokeStyle=c; ctx.lineWidth=Math.max(1.4,r*0.24); ctx.lineCap="round"; ctx.lineJoin="round";
+      ctx.beginPath(); ctx.moveTo(cx-r*0.24,hy+r*0.02); ctx.lineTo(cx-r*0.03,hy+r*0.22); ctx.lineTo(cx+r*0.28,hy-r*0.22); ctx.stroke(); }
+    ctx.restore(); }
   function draw(){
     if(!canvas.isConnected){ return; }
-    const {w,h}=size(), cx=w/2, cy=h/2, R=Math.min(w,h)/2-10;
+    const tnow=now(); let dt=(tnow-lastT)/1000; lastT=tnow; if(dt>0.1)dt=0.1; if(dt<0)dt=0;
+    const {w,h}=size(), cx=w/2, cy=h/2, R=Math.min(w,h)/2-16;
     ctx.clearRect(0,0,w,h);
-    const g=ctx.createRadialGradient(cx-R*0.35,cy-R*0.35,R*0.1, cx,cy,R);
-    g.addColorStop(0,"#5aa0d8"); g.addColorStop(0.6,"#3d7ab8"); g.addColorStop(1,"#235a92");
+    // 大気グロー（球体の外周）
+    const glow=ctx.createRadialGradient(cx,cy,R*0.92, cx,cy,R*1.32);
+    glow.addColorStop(0,"rgba(96,168,224,0.30)"); glow.addColorStop(0.5,"rgba(96,168,224,0.10)"); glow.addColorStop(1,"rgba(96,168,224,0)");
+    ctx.beginPath(); ctx.arc(cx,cy,R*1.32,0,7); ctx.fillStyle=glow; ctx.fill();
+    // 海（球面グラデ・光源は左上）
+    const g=ctx.createRadialGradient(cx-R*0.38,cy-R*0.42,R*0.08, cx,cy,R);
+    g.addColorStop(0,"#78b7ea"); g.addColorStop(0.55,"#3f80bd"); g.addColorStop(1,"#1c4c83");
     ctx.beginPath(); ctx.arc(cx,cy,R,0,7); ctx.fillStyle=g; ctx.fill();
     ctx.save(); ctx.beginPath(); ctx.arc(cx,cy,R,0,7); ctx.clip();
-    ctx.fillStyle="#5b9c6a";
+    // 大陸
     for(const poly of CONTINENTS){ let cl=0,cg=0; for(const p of poly){cg+=p[0];cl+=p[1];} if(!front(cl/poly.length,cg/poly.length)) continue;
-      ctx.beginPath(); poly.forEach((p,i)=>{ const q=project(p[1],p[0],cx,cy,R); i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y); }); ctx.closePath(); ctx.globalAlpha=0.82; ctx.fill(); ctx.globalAlpha=1; }
-    ctx.strokeStyle="rgba(255,255,255,0.16)"; ctx.lineWidth=0.7;
-    for(let lng=-150;lng<=180;lng+=30){ ctx.beginPath(); let s=false; for(let lat=-80;lat<=80;lat+=5){ const q=project(lat,lng,cx,cy,R); if(q.front){ s?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y); s=true; } else s=false; } ctx.stroke(); }
-    for(let lat=-60;lat<=60;lat+=30){ ctx.beginPath(); let s=false; for(let lng=-180;lng<=180;lng+=5){ const q=project(lat,lng,cx,cy,R); if(q.front){ s?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y); s=true; } else s=false; } ctx.stroke(); }
+      ctx.beginPath(); poly.forEach((p,i)=>{ const q=project(p[1],p[0],cx,cy,R); i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y); }); ctx.closePath();
+      ctx.globalAlpha=0.9; ctx.fillStyle="#5aa06a"; ctx.fill();
+      ctx.globalAlpha=0.5; ctx.lineWidth=0.8; ctx.strokeStyle="#3e7d52"; ctx.stroke(); ctx.globalAlpha=1; }
+    // 経緯線
+    ctx.strokeStyle="rgba(255,255,255,0.14)"; ctx.lineWidth=0.7;
+    for(let lng=-150;lng<=180;lng+=30){ ctx.beginPath(); let s=false; for(let lat=-80;lat<=80;lat+=4){ const q=project(lat,lng,cx,cy,R); if(q.front){ s?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y); s=true; } else s=false; } ctx.stroke(); }
+    for(let lat=-60;lat<=60;lat+=30){ ctx.beginPath(); let s=false; for(let lng=-180;lng<=180;lng+=4){ const q=project(lat,lng,cx,cy,R); if(q.front){ s?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y); s=true; } else s=false; } ctx.stroke(); }
+    // 球体シェーディング（暗いリム）＋スペキュラハイライト
+    const shade=ctx.createRadialGradient(cx-R*0.3,cy-R*0.34,R*0.2, cx,cy,R);
+    shade.addColorStop(0,"rgba(255,255,255,0.10)"); shade.addColorStop(0.62,"rgba(0,0,0,0)"); shade.addColorStop(1,"rgba(4,20,42,0.45)");
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,7); ctx.fillStyle=shade; ctx.fill();
+    const spec=ctx.createRadialGradient(cx-R*0.42,cy-R*0.46,0, cx-R*0.42,cy-R*0.46,R*0.55);
+    spec.addColorStop(0,"rgba(255,255,255,0.38)"); spec.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,7); ctx.fillStyle=spec; ctx.fill();
     ctx.restore();
-    ctx.beginPath(); ctx.arc(cx,cy,R,0,7); ctx.strokeStyle="rgba(255,255,255,0.35)"; ctx.lineWidth=1; ctx.stroke();
-    const pulse=(Date.now()%1500)/1500;
+    // リム輪郭
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,7); ctx.strokeStyle="rgba(255,255,255,0.4)"; ctx.lineWidth=1; ctx.stroke();
+    // ピン（色=種別／マーカー=状態）
+    const pulse=(tnow%1500)/1500;
     stages.forEach((st,i)=>{ const ss=stageStatus(st,i,stages), q=project(st.lat,st.lng,cx,cy,R); st._vis=q.front; st._sx=q.x; st._sy=q.y; if(!q.front) return;
-      const big=(ss==="open"||ss==="done"||ss==="pioneered"), alpha=big?1:ss==="voting"?0.75:0.4;
-      pin(q.x,q.y,color(ss),big?1.18:0.98,alpha,ss==="open"?pulse:0); });
-    if(!dragging && Date.now()-lastInteract>3500) lon0+=0.06;
+      const primary=(ss==="open"||ss==="done"||ss==="pioneered"||ss==="sight"), alpha=primary?1:ss==="voting"?0.8:0.42;
+      const mark=(ss==="done"||ss==="pioneered")?"check":"";
+      pin(q.x,q.y,pinColor(st,ss),primary?1.2:0.98,alpha,ss==="open"?pulse:0,mark); });
+    // 回転（慣性→アイドル自転へなめらかに移行）
+    if(!dragging){
+      lon0+=spin*dt; lat0=Math.max(-80,Math.min(80,lat0+tiltV*dt));
+      const idle=(tnow-lastInteract>1500);
+      const target= idle?IDLE:0;
+      spin += (target-spin)*Math.min(1,(idle?0.9:2.6)*dt);
+      tiltV += (0-tiltV)*Math.min(1,4*dt);
+    }
     _globeRAF=requestAnimationFrame(draw);
   }
   function xy(e){ const r=canvas.getBoundingClientRect(), t=e.touches&&e.touches[0]?e.touches[0]:(e.changedTouches&&e.changedTouches[0]?e.changedTouches[0]:e); return {x:t.clientX-r.left, y:t.clientY-r.top}; }
-  function down(e){ dragging=true; moved=false; const p=xy(e); lastX=p.x; lastY=p.y; lastInteract=Date.now(); }
-  function move(e){ if(!dragging)return; const p=xy(e), dx=p.x-lastX, dy=p.y-lastY; if(Math.abs(dx)+Math.abs(dy)>4) moved=true; lon0-=dx*0.35; lat0=Math.max(-80,Math.min(80,lat0+dy*0.3)); lastX=p.x; lastY=p.y; lastInteract=Date.now(); if(e.cancelable)e.preventDefault(); }
-  function up(e){ if(!dragging)return; dragging=false; lastInteract=Date.now(); if(moved)return; const p=xy(e); let best=null,bd=26; stages.forEach((st,i)=>{ if(!st._vis||st._sx==null)return; const d=Math.hypot(p.x-st._sx,p.y-(st._sy-20)); if(d<bd){bd=d;best={st,i};} }); if(best) onPick(best.st,best.i); }
+  function down(e){ dragging=true; moved=false; spin=0; tiltV=0; const p=xy(e); lastX=p.x; lastY=p.y; lastInteract=now(); lastMoveT=now(); }
+  function move(e){ if(!dragging)return; const p=xy(e), dx=p.x-lastX, dy=p.y-lastY; if(Math.abs(dx)+Math.abs(dy)>4) moved=true;
+    const tm=now(); let dtm=(tm-lastMoveT)/1000; if(dtm<=0||dtm>0.05) dtm=0.016; lastMoveT=tm;
+    const dLon=-dx*0.35, dLat=dy*0.3;
+    lon0+=dLon; lat0=Math.max(-80,Math.min(80,lat0+dLat));
+    spin=Math.max(-200,Math.min(200,dLon/dtm)); tiltV=Math.max(-200,Math.min(200,dLat/dtm));
+    lastX=p.x; lastY=p.y; lastInteract=now(); if(e.cancelable)e.preventDefault(); }
+  function up(e){ if(!dragging)return; dragging=false; lastInteract=now(); if(moved)return; const p=xy(e); let best=null,bd=26; stages.forEach((st,i)=>{ if(!st._vis||st._sx==null)return; const d=Math.hypot(p.x-st._sx,p.y-(st._sy-20)); if(d<bd){bd=d;best={st,i};} }); if(best) onPick(best.st,best.i); }
   canvas.addEventListener("mousedown",down); canvas.addEventListener("mousemove",move); canvas.addEventListener("mouseup",up); canvas.addEventListener("mouseleave",()=>{dragging=false;});
   canvas.addEventListener("touchstart",down,{passive:true}); canvas.addEventListener("touchmove",move,{passive:false}); canvas.addEventListener("touchend",up);
   draw();
@@ -1352,7 +1447,7 @@ function openFeedback(){
 }
 // 開拓投票ボックス（アンティグア制覇後に出る"隠しボックス"）。10票でその場所が開拓される
 function openVoteBox(){
-  const cands=DATA.stages.filter(s=>s.questSource!=="antigua");
+  const cands=heritageStages();
   const bar=(v,pio)=>`<div style="height:9px;border-radius:5px;background:rgba(150,150,150,.25);margin-top:8px;overflow:hidden"><div style="height:100%;width:${Math.min(100,Math.round(v/VOTE_UNLOCK*100))}%;background:${pio?"#2c8c84":"#e8a33d"}"></div></div>`;
   const rowHtml=s=>{ const v=stageVotes(s.id), pio=v>=VOTE_UNLOCK, voted=hasVoted(s.id);
     return `<div class="card" style="margin-bottom:8px"><div class="card-body" style="padding:12px">
@@ -1391,6 +1486,16 @@ function openDungeonPreview(stage){
 }
 function openStageSheet(stage, idx){
   const stages=DATA.stages, st=stageStatus(stage,idx,stages), p=stageProgress(stage), pct=p.total?Math.round(p.done/p.total*100):0;
+  if(st==="sight"){
+    const back=openSheet(`<h2>${stage.flag} ${esc(L(stage.name))}</h2>
+      <p class="muted" style="font-size:13px;margin:2px 0 12px">${esc(L(stage.country))} ・ <span style="color:#3fae6a;font-weight:700">${t("sight_badge")}</span></p>
+      <div class="card"><div class="card-body"><p style="margin:0">${esc(L(stage.blurb)||t("sight_soon"))}</p></div></div>
+      <button class="btn gold" id="stMap" style="margin-top:10px">${t("go_here")}</button>
+      <button class="btn secondary" id="stReq" style="margin-top:8px">${t("gr_locked_cta")}</button>`);
+    $("#stMap",back).onclick=()=>window.open(`https://www.google.com/maps/search/?api=1&query=${stage.lat},${stage.lng}`,"_blank","noopener");
+    $("#stReq",back).onclick=()=>openGuideRequest(stage);
+    return;
+  }
   if(st==="open"||st==="done"){
     const back=openSheet(`<h2>${stage.flag} ${esc(L(stage.name))}</h2>
       <p class="muted" style="font-size:13px;margin:2px 0 12px">${esc(L(stage.country))} ・ ${t("st_stage")} ${stage.order} ・ ${st==="done"?t("stage_done"):t("you_are_here")}</p>
@@ -1498,6 +1603,12 @@ function viewMyPage(){
         <div class="row" style="align-items:center"><strong style="font-size:15px">🌎 ${t("globe_title")}</strong><span class="spacer"></span><span class="muted" style="font-size:11px">${t("drag_hint")}</span></div>
         <p class="muted" style="font-size:12px;margin:4px 0 8px">${t("globe_sub")}</p>
         <canvas id="globe" style="width:100%;height:300px;display:block;touch-action:none"></canvas>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;font-size:11px;align-items:center;justify-content:center;color:var(--muted,#8a8f98)">
+          <span style="display:inline-flex;align-items:center;gap:5px"><i style="width:10px;height:10px;border-radius:50%;background:#eaa72e;display:inline-block"></i>${t("leg_heritage")}</span>
+          <span style="display:inline-flex;align-items:center;gap:5px"><i style="width:10px;height:10px;border-radius:50%;background:#35b06a;display:inline-block"></i>${t("leg_sight")}</span>
+          <span style="display:inline-flex;align-items:center;gap:5px"><i style="width:10px;height:10px;border-radius:50%;background:#98a0ab;display:inline-block"></i>${t("leg_locked")}</span>
+          <span style="display:inline-flex;align-items:center;gap:4px">✓ ${t("leg_done")}</span>
+        </div>
         <div id="stageInfo" style="margin-top:10px"></div>
       </div></div>
       <div class="card" style="margin-bottom:6px"><div class="card-body">

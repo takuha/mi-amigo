@@ -240,6 +240,15 @@ window.MI_AMIGO_DATA = {
     { id:"rome", order:8, flag:"🇮🇹", lat:41.890, lng:12.492,
       name:{ ja:"ローマ歴史地区", en:"Historic Rome", es:"Roma histórica" },
       country:{ ja:"イタリア", en:"Italy", es:"Italia" } },
+    // 観光地（世界遺産ではない・グアテマラの人気スポット）
+    { id:"atitlan", order:9, type:"sight", flag:"🇬🇹", lat:14.69, lng:-91.20,
+      name:{ ja:"アティトラン湖", en:"Lake Atitlán", es:"Lago de Atitlán" },
+      country:{ ja:"グアテマラ", en:"Guatemala", es:"Guatemala" },
+      blurb:{ ja:"3つの火山に囲まれた世界屈指の美しい湖。湖畔の村めぐりが楽しい。", en:"A stunning crater lake ringed by three volcanoes, with lakeside villages to hop between.", es:"Un bello lago de cráter rodeado por tres volcanes, con pueblos a la orilla para recorrer." } },
+    { id:"monterrico", order:10, type:"sight", flag:"🇬🇹", lat:13.898, lng:-90.485,
+      name:{ ja:"モンテリコ", en:"Monterrico", es:"Monterrico" },
+      country:{ ja:"グアテマラ", en:"Guatemala", es:"Guatemala" },
+      blurb:{ ja:"黒砂のビーチとウミガメの産卵で知られる太平洋岸の村。", en:"A Pacific-coast village known for black-sand beaches and sea-turtle nesting.", es:"Un pueblo del Pacífico famoso por su playa de arena negra y el desove de tortugas." } },
   ],
 
   // 国リスト（出身国・誇りに思う国 用。flag＋多言語名）
