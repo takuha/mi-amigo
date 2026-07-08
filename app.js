@@ -1568,6 +1568,7 @@ const SIGHT_THEME={
   semuc:{c1:"#1f9e7a",c2:"#0f5d3a",icon:"🏞️"},
   flores:{c1:"#2a86c9",c2:"#d76a72",icon:"🏝️"},
   pacaya:{c1:"#2b2320",c2:"#d64a2a",icon:"🌋"},
+  chichi:{c1:"#8e2f7a",c2:"#e08a2e",icon:"🧺"},
   _default:{c1:"#2c8c84",c2:"#e8a33d",icon:"🌎"},
 };
 // グラデーションのヒーローバナー（絵文字＋名前＋種別）。写真の代わりにカードを華やかに。
